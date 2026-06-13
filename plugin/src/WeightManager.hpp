@@ -3,6 +3,7 @@
 #include <SKSE/SKSE.h>
 #include <mutex>
 #include <random>
+#include <string>
 #include <unordered_set>
 
 namespace OBW {
@@ -22,10 +23,10 @@ class WeightManager {
 public:
     static WeightManager& GetSingleton() noexcept;
 
-    // Gera peso (0-100) para o actor conforme o modo configurado
+    // Generate weight (0-100) for the actor according to the configured mode.
     float GenerateWeight(RE::Actor* a_actor);
 
-    // Aplica peso ao ActorBase do actor (afeta todas as instâncias do mesmo base)
+    // Apply weight to the actor's ActorBase (affects all instances of the same base).
     static void ApplyWeight(RE::Actor* a_actor, float a_weight);
 
     // Procedural morph generation — no preset files required.
@@ -42,7 +43,7 @@ public:
     // Per-NPC male intensity: realistic (~1.0) or fantasy (1.3-2.0), or unusual extreme.
     float GetMaleIntensity(RE::Actor* a_actor);
 
-    // Configuração
+    // Configuration
     WeightMode    GetMode() const noexcept      { return _mode; }
     void          SetMode(WeightMode m)         { _mode = m; }
     float         GetBias() const noexcept      { return _bias; }
@@ -70,6 +71,14 @@ public:
     // Re-roll hotkey (DirectInput scancode). Default 26 = the [ / { key. MCM-bindable.
     std::int32_t  GetReRollKey() const noexcept { return _reRollKey; }
     void          SetReRollKey(std::int32_t k)  { _reRollKey = k; }
+    // Master toggle for the whole male-body feature (weight + morphs). When false, OBW
+    // ignores male NPCs completely. MCM-toggleable, persisted in the cosave.
+    bool          GetMaleBodies() const noexcept { return _maleBodies; }
+    void          SetMaleBodies(bool b)          { _maleBodies = b; }
+
+    // Female muscle-tone score 0-100 (athletic roll + snu snu, belly-suppressed) — the
+    // same value that drives the muscle morph sliders. Exposed for other mods' classifier.
+    int GetToneScore(RE::Actor* a_actor);
 
     // Per-NPC effective intensity: realistic (~1.0) or fantasy (~1.3-2.2),
     // times the global scale. Papyrus calls this once per NPC and applies it to
@@ -153,6 +162,7 @@ private:
     float         _unusualRatio{ 0.06f };
     float         _breastUnusualRatio{ 0.06f };
     float         _athleticRatio{ 0.15f };
+    bool          _maleBodies{ true };     // process male NPCs at all (weight + morphs)
     std::int32_t  _reRollKey{ 26 };  // [ / { key
     std::uint32_t _seed{ 0 };
     mutable std::recursive_mutex                  _mutex;  // guards the containers below
@@ -175,6 +185,7 @@ private:
     static constexpr std::uint32_t kRecordBUn  = 'BUNU';
     static constexpr std::uint32_t kRecordAth  = 'ATHL';
     static constexpr std::uint32_t kRecordKey  = 'RKEY';
+    static constexpr std::uint32_t kRecordMale = 'MALE';
     static constexpr std::uint32_t kRecordVer  = 1;
 };
 

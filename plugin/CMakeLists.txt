@@ -71,12 +71,12 @@ target_precompile_headers(${PROJECT_NAME}
     PRIVATE "${CMAKE_SOURCE_DIR}/src/PCH.h"
 )
 
-# ── Copia DLL para Data/SKSE/Plugins ─────────────────────────────────────────
+# ── Copy DLL to Data/SKSE/Plugins ────────────────────────────────────────────
 set(OUTPUT_DIR "${CMAKE_SOURCE_DIR}/../SKSE/Plugins")
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory "${OUTPUT_DIR}"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "$<TARGET_FILE:${PROJECT_NAME}>"
         "${OUTPUT_DIR}/$<TARGET_FILE_NAME:${PROJECT_NAME}>"
-    COMMENT "Instalando OBodyNGWeight.dll em SKSE/Plugins"
+    COMMENT "Installing OBodyNGWeight.dll into SKSE/Plugins"
 )

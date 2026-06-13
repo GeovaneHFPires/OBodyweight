@@ -2,6 +2,7 @@ Scriptname OBW_MCM extends SKI_ConfigBase
 
 int _modeOption     = -1
 int _bodyOption     = -1
+int _maleOption     = -1
 int _scaleOption    = -1
 int _fantasyOption  = -1
 int _unusualOption  = -1
@@ -40,6 +41,7 @@ Event OnPageReset(string page)
 
     AddHeaderOption("Body Shape")
     _bodyOption = AddMenuOption("Body shape", _bodyLabels[OBW_Native.GetBodyMode()])
+    _maleOption = AddToggleOption("Male bodies", OBW_Native.GetMaleBodies())
     _scaleOption = AddSliderOption("Morph intensity", OBW_Native.GetMorphScale(), "{2}x")
     _fantasyOption = AddSliderOption("Fantasy NPCs", OBW_Native.GetFantasyRatio() * 100.0, "{0}%")
     _unusualOption = AddSliderOption("Unusual bodies", OBW_Native.GetUnusualRatio() * 100.0, "{0}%")
@@ -163,6 +165,10 @@ Event OnOptionSelect(int option)
         int newSeed = OBW_Native.GetSeed()
         SetTextOptionValue(_seedOption, newSeed as string)
         Debug.Notification("OBodyNG Weight: new seed generated.")
+    elseif option == _maleOption
+        bool newVal = !OBW_Native.GetMaleBodies()
+        OBW_Native.SetMaleBodies(newVal)
+        SetToggleOptionValue(_maleOption, newVal)
     endif
 EndEvent
 
@@ -171,6 +177,8 @@ Event OnOptionHighlight(int option)
         SetInfoText("Random: NPCs are consistent within a session, but get new values each time you reload a save.\nSeeded: same NPC always gets the same weight for this entire playthrough.\nNPC Default: disables weight randomization.")
     elseif option == _bodyOption
         SetInfoText("Procedural Morphs: generates body shape directly via SKEE — no BodySlide preset library needed.\nOBody Presets: OBody picks the body shape; this mod only randomizes weight.")
+    elseif option == _maleOption
+        SetInfoText("Master switch for male NPCs. ON: men get procedural HIMBO bodies + weight, like women. OFF: OBW ignores men entirely (no weight, no morphs) — OBody or vanilla handle them. Applies to newly generated/re-rolled NPCs.")
     elseif option == _scaleOption
         SetInfoText("Master multiplier for procedural morph intensity. 1.0 = calibrated to real BodySlide presets. Affects both realistic and fantasy NPCs. Applies to newly generated/re-rolled NPCs.")
     elseif option == _fantasyOption

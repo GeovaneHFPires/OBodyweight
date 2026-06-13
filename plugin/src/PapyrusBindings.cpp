@@ -8,19 +8,19 @@ namespace {
 
 constexpr std::string_view kScript{ "OBW_Native" };
 
-// Gera e retorna o peso para o actor (sem aplicar)
+// Generate and return the weight for the actor (without applying it).
 float GetWeight(RE::StaticFunctionTag*, RE::Actor* a_actor) {
     return WeightManager::GetSingleton().GenerateWeight(a_actor);
 }
 
-// Aplica o peso gerado ao actor e atualiza a geometria
+// Apply the generated weight to the actor and refresh the geometry.
 void ApplyGeneratedWeight(RE::StaticFunctionTag*, RE::Actor* a_actor) {
     auto& mgr = WeightManager::GetSingleton();
     float w = mgr.GenerateWeight(a_actor);
     WeightManager::ApplyWeight(a_actor, w);
 }
 
-// Modo: 0=Random, 1=Seeded/Deterministic, 2=NpcDefault
+// Mode: 0=Random, 1=Seeded/Deterministic, 2=NpcDefault
 std::int32_t GetMode(RE::StaticFunctionTag*) {
     return static_cast<std::int32_t>(WeightManager::GetSingleton().GetMode());
 }
@@ -101,6 +101,14 @@ void SetReRollKey(RE::StaticFunctionTag*, std::int32_t a_key) {
     WeightManager::GetSingleton().SetReRollKey(a_key);
 }
 
+bool GetMaleBodies(RE::StaticFunctionTag*) {
+    return WeightManager::GetSingleton().GetMaleBodies();
+}
+
+void SetMaleBodies(RE::StaticFunctionTag*, bool a_on) {
+    WeightManager::GetSingleton().SetMaleBodies(a_on);
+}
+
 float GetActorIntensity(RE::StaticFunctionTag*, RE::Actor* a_actor) {
     return WeightManager::GetSingleton().GetActorIntensity(a_actor);
 }
@@ -137,6 +145,10 @@ float GetMaleIntensity(RE::StaticFunctionTag*, RE::Actor* a_actor) {
 
 void RegenerateActor(RE::StaticFunctionTag*, RE::Actor* a_actor) {
     WeightManager::GetSingleton().RegenerateActor(a_actor);
+}
+
+std::int32_t GetToneScore(RE::StaticFunctionTag*, RE::Actor* a_actor) {
+    return WeightManager::GetSingleton().GetToneScore(a_actor);
 }
 
 void MarkMorphsApplied(RE::StaticFunctionTag*, RE::Actor* a_actor) {
@@ -176,15 +188,18 @@ bool Register(RE::BSScript::IVirtualMachine* a_vm) {
     a_vm->RegisterFunction("SetAthleticRatio",    kScript, SetAthleticRatio);
     a_vm->RegisterFunction("GetReRollKey",        kScript, GetReRollKey);
     a_vm->RegisterFunction("SetReRollKey",        kScript, SetReRollKey);
+    a_vm->RegisterFunction("GetMaleBodies",       kScript, GetMaleBodies);
+    a_vm->RegisterFunction("SetMaleBodies",       kScript, SetMaleBodies);
     a_vm->RegisterFunction("GetActorIntensity",   kScript, GetActorIntensity);
     a_vm->RegisterFunction("GetFrameScore",       kScript, GetFrameScore);
     a_vm->RegisterFunction("GetMorphValue",       kScript, GetMorphValue);
     a_vm->RegisterFunction("GetMaleMorphValue",   kScript, GetMaleMorphValue);
     a_vm->RegisterFunction("GetMaleIntensity",    kScript, GetMaleIntensity);
     a_vm->RegisterFunction("RegenerateActor",     kScript, RegenerateActor);
+    a_vm->RegisterFunction("GetToneScore",        kScript, GetToneScore);
     a_vm->RegisterFunction("MarkMorphsApplied",   kScript, MarkMorphsApplied);
     a_vm->RegisterFunction("HasMorphsApplied",    kScript, HasMorphsApplied);
-    SKSE::log::info("OBW: Papyrus bindings registrados");
+    SKSE::log::info("OBW: Papyrus bindings registered");
     return true;
 }
 

@@ -31,8 +31,11 @@ struct CellAttachHandler : public RE::BSTEventSink<RE::TESCellAttachDetachEvent>
         if (!base) return RE::BSEventNotifyControl::kContinue;
 
         // Weight applies to all adults (both sexes); only children are excluded.
-        // Procedural morphs remain female-only (driven by OBody's OnActorGenerated).
         if (actor->IsChild()) return RE::BSEventNotifyControl::kContinue;
+
+        // Male-bodies master toggle: when off, leave male NPCs entirely alone (no weight).
+        if (!base->IsFemale() && !WeightManager::GetSingleton().GetMaleBodies())
+            return RE::BSEventNotifyControl::kContinue;
 
         // NECK SEAM PRECAUTION: only set weight BEFORE the 3D is built, so the head
         // facegen and the body mesh are generated together at the new weight. If the

@@ -28,7 +28,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* a_skse) {
     if (!papyrus) return false;
     papyrus->Register(OBW::PapyrusBindings::Register);
 
-    // Cosave (UID único entre todos os plugins SKSE)
+    // Cosave (UID unique across all SKSE plugins)
     auto* serial = SKSE::GetSerializationInterface();
     if (serial) {
         serial->SetUniqueID(OBW::WeightManager::kRecordUID);
@@ -45,11 +45,11 @@ SKSEPluginLoad(const SKSE::LoadInterface* a_skse) {
             if (a_msg && a_msg->type == SKSE::MessagingInterface::kDataLoaded) {
                 RE::ScriptEventSourceHolder::GetSingleton()
                     ->AddEventSink(OBW::CellAttachHandler::GetSingleton());
-                SKSE::log::info("OBW: cell-attach sink registrado (kDataLoaded)");
+                SKSE::log::info("OBW: cell-attach sink registered (kDataLoaded)");
             }
         });
     }
 
-    SKSE::log::info("OBodyNGWeight carregado");
+    SKSE::log::info("OBodyNGWeight loaded");
     return true;
 }

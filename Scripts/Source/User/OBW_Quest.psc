@@ -54,6 +54,10 @@ Event OnActorGenerated(Actor akActor, string presetName)
     if OBW_Native.GetBodyMode() == 1
         return
     endif
+    ; Male-bodies master toggle: don't even queue males when the feature is off.
+    if akActor.GetActorBase().GetSex() == 0 && !OBW_Native.GetMaleBodies()
+        return
+    endif
     OBW_Native.QueueForMorphs(akActor)
     RegisterForSingleUpdate(0.3)   ; arm the drain (resets on each enqueue → fires after last)
 EndEvent
@@ -92,12 +96,19 @@ Function ApplyMorphs(Actor akActor)
         return
     endif
 
-    ; Clear OBody's preset morphs (key "OBody") for BOTH sexes — OBody has a male
-    ; preset DB too, so without this the male HIMBO preset would stack with our "OBW".
+    ; Male-bodies master toggle: leave males entirely alone when off — don't even clear
+    ; OBody's morphs, so OBody's own male presets keep working. 0 = male, 1 = female.
+    bool isFemale = akActor.GetActorBase().GetSex() == 1
+    if !isFemale && !OBW_Native.GetMaleBodies()
+        return
+    endif
+
+    ; Clear OBody's preset morphs (key "OBody") — OBody has a male preset DB too, so
+    ; without this the male HIMBO preset would stack with our "OBW".
     NiOverride.ClearBodyMorphNames(akActor, "OBody")
 
-    ; Sex-branched: females use CBBE 3BA sliders, males use HIMBO. 0 = male, 1 = female.
-    if akActor.GetActorBase().GetSex() == 1
+    ; Sex-branched: females use CBBE 3BA sliders, males use HIMBO.
+    if isFemale
         ApplyFemaleMorphs(akActor)
     else
         ApplyMaleMorphs(akActor)

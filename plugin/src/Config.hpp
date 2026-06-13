@@ -11,6 +11,9 @@ inline float g_defaultUnusualRatio       = 0.06f;
 inline float g_defaultBreastUnusualRatio = 0.06f;
 inline float g_defaultAthleticRatio      = 0.15f;
 inline int   g_defaultReRollKey          = 26;  // [ / { key
+// Male bodies: when false, OBW leaves male NPCs entirely alone (no weight, no morphs) —
+// OBody / vanilla handle them. Toggleable in the MCM.
+inline bool  g_defaultMaleBodies         = true;
 
 // Parse the INI. Call once in SKSEPluginLoad, before WeightManager is constructed.
 void Load();

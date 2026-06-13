@@ -3,7 +3,9 @@
 #include "Config.hpp"
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <random>
+#include <string>
 #include <unordered_map>
 
 namespace OBW {
@@ -14,6 +16,7 @@ WeightManager::WeightManager() {
     _unusualRatio = Config::g_defaultUnusualRatio;
     _breastUnusualRatio = Config::g_defaultBreastUnusualRatio;
     _athleticRatio = Config::g_defaultAthleticRatio;
+    _maleBodies = Config::g_defaultMaleBodies;
     _reRollKey = Config::g_defaultReRollKey;
 }
 
@@ -185,6 +188,50 @@ float TraitDeltaFrom(const std::vector<TCat>& cats, std::uint32_t a_seedBase, st
 float TraitDelta(std::uint32_t s, std::string_view k)     { return TraitDeltaFrom(kTraitCategories, s, k); }
 float MaleTraitDelta(std::uint32_t s, std::string_view k) { return TraitDeltaFrom(kMaleTraitCategories, s, k); }
 
+// Per-region female muscle tone (0-100). The single source of truth for the muscle morph
+// sliders (and GetToneScore). A woman is athletic as a whole (gate + base), but one region
+// dominates → local variety ("leg day", strong core, defined arms). Belly suppresses the
+// core most.
+struct ToneSet { float core; float arms; float legs; float overall; bool snusnu; };
+
+ToneSet ComputeTones(std::uint32_t a_seedBase, float a_frameScore, float a_athleticRatio) {
+    // SAME stream as IsSnuSnu — draw1 = athletic gate, draw2 = snu snu. Don't reorder.
+    std::mt19937 ar{ a_seedBase ^ 0x0A7E1E70u };
+    const bool athletic = std::uniform_real_distribution<float>(0.0f, 1.0f)(ar) < a_athleticRatio;
+    const bool snusnu   = athletic && (std::uniform_real_distribution<float>(0.0f, 1.0f)(ar) < 0.12f);
+    const float baseTone = snusnu
+        ? std::uniform_real_distribution<float>(92.0f, 110.0f)(ar)
+        : athletic ? std::uniform_real_distribution<float>(55.0f, 90.0f)(ar)
+                   : std::uniform_real_distribution<float>(0.0f, 22.0f)(ar);
+
+    const float t = std::clamp(a_frameScore, 0.0f, 100.0f) / 100.0f;
+    const float belly = std::clamp(30.0f * t + TraitDelta(a_seedBase, "belly"), 0.0f, 100.0f);
+
+    // One dominant region per woman; the others sit slightly lower (sum ≈ neutral).
+    std::mt19937 dr{ a_seedBase ^ 0x70E50D01u };
+    const int dom = static_cast<int>(dr() % 3u);
+
+    auto region = [&](int r, float bellyFactor, std::uint32_t salt) -> float {
+        std::mt19937 nr{ a_seedBase ^ salt };
+        // Dominant-region split ONLY for athletic women — otherwise the +bias would lift
+        // non-athletic (baseTone 0-22) women into visible muscle and everyone looks toned.
+        // Non-athletic get only tiny noise so they stay smooth, like before.
+        const float bias = athletic
+            ? (r == dom ? 18.0f : -10.0f) + std::uniform_real_distribution<float>(-6.0f, 6.0f)(nr)
+            : std::uniform_real_distribution<float>(-4.0f, 4.0f)(nr);
+        const float bf = snusnu ? 0.20f : bellyFactor;  // snu snu stays lean & cut all over
+        return std::clamp(baseTone + bias - belly * bf, 0.0f, 100.0f);
+    };
+
+    ToneSet ts;
+    ts.core    = region(0, 0.55f, 0x0C0DE001u);  // abs hidden by belly the most
+    ts.arms    = region(1, 0.30f, 0x0A4D5002u);
+    ts.legs    = region(2, 0.25f, 0x0CE65003u);
+    ts.overall = (ts.core + ts.arms + ts.legs) / 3.0f;
+    ts.snusnu  = snusnu;
+    return ts;
+}
+
 std::string ToLower(std::string_view s) {
     std::string out(s);
     for (auto& c : out) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
@@ -284,29 +331,19 @@ float WeightManager::GetMorphValue(RE::Actor* a_actor, float a_frameScore, std::
     if (key == "muscle" || key == "muscleabs" || key == "musclearms" ||
         key == "musclelegs" || key == "veramuscletones" ||
         key == "musclemoreabs_v2" || key == "musclemorearms_v2" || key == "musclemorelegs_v2") {
-        std::mt19937 ar{ seedBase ^ 0x0A7E1E70u };
-        const bool athletic = std::uniform_real_distribution<float>(0.0f, 1.0f)(ar) < _athleticRatio;
-        const bool snusnu   = athletic && (std::uniform_real_distribution<float>(0.0f, 1.0f)(ar) < 0.12f);
-        const float baseTone = snusnu
-            ? std::uniform_real_distribution<float>(92.0f, 110.0f)(ar)   // super toned, Amazon
-            : athletic ? std::uniform_real_distribution<float>(55.0f, 90.0f)(ar)
-                       : std::uniform_real_distribution<float>(0.0f, 22.0f)(ar);
-        const float t = std::clamp(a_frameScore, 0.0f, 100.0f) / 100.0f;
-        const float belly = std::clamp(30.0f * t + TraitDelta(seedBase, "belly"), 0.0f, 100.0f);
-        const float bellyFactor = snusnu ? 0.20f : 0.55f;   // snu snu stays lean & cut
-        const float tone = std::clamp(baseTone - belly * bellyFactor, 0.0f, 100.0f);
+        const ToneSet ts = ComputeTones(seedBase, a_frameScore, _athleticRatio);
 
-        // "More" sliders only for snu snu — the deep-definition overflow above mid-tone.
-        const float overflow = std::clamp(tone - 50.0f, 0.0f, 100.0f);
-        if (key == "musclemoreabs_v2")  return snusnu ? overflow * 0.90f : 0.0f;
-        if (key == "musclemorearms_v2") return snusnu ? overflow * 0.70f : 0.0f;
-        if (key == "musclemorelegs_v2") return snusnu ? overflow * 0.65f : 0.0f;
+        // "More" sliders only for snu snu — deep-definition overflow above mid-tone,
+        // per region so each region's depth tracks its own tone.
+        if (key == "musclemoreabs_v2")  return ts.snusnu ? std::clamp(ts.core - 50.0f, 0.0f, 100.0f) * 0.90f : 0.0f;
+        if (key == "musclemorearms_v2") return ts.snusnu ? std::clamp(ts.arms - 50.0f, 0.0f, 100.0f) * 0.70f : 0.0f;
+        if (key == "musclemorelegs_v2") return ts.snusnu ? std::clamp(ts.legs - 50.0f, 0.0f, 100.0f) * 0.65f : 0.0f;
 
-        if (key == "veramuscletones") return tone * 0.90f;
-        if (key == "muscleabs")       return tone * 0.85f;
-        if (key == "musclearms")      return tone * 0.65f;
-        if (key == "musclelegs")      return tone * 0.60f;
-        return tone * 0.50f;  // "Muscle" overall
+        if (key == "veramuscletones") return ts.overall * 0.90f;
+        if (key == "muscleabs")       return ts.core * 0.85f;
+        if (key == "musclearms")      return ts.arms * 0.65f;
+        if (key == "musclelegs")      return ts.legs * 0.60f;
+        return ts.overall * 0.50f;  // "Muscle" overall
     }
 
     // Volume base: frameScore-driven interpolation + per-part noise (table sliders only).
@@ -333,6 +370,16 @@ float WeightManager::GetMorphValue(RE::Actor* a_actor, float a_frameScore, std::
     const float td = unusualBody ? 0.0f : TraitDelta(seedBase, key);
 
     return std::clamp(base + td, 0.0f, 100.0f);
+}
+
+// Overall muscle-tone score 0-100 (average of the three regions). Exposed for other mods'
+// body classifier; OBW itself only uses the regional tones inside GetMorphValue.
+int WeightManager::GetToneScore(RE::Actor* a_actor) {
+    if (!a_actor) return 0;
+    std::scoped_lock lock(_mutex);
+    const std::uint32_t seedBase = GetActorSeed(a_actor->GetFormID());
+    const ToneSet ts = ComputeTones(seedBase, GetFrameScore(a_actor), _athleticRatio);
+    return static_cast<int>(std::lround(ts.overall));
 }
 
 float WeightManager::GetActorIntensity(RE::Actor* a_actor) {
@@ -549,7 +596,7 @@ void WeightManager::Save(SKSE::SerializationInterface* a_intf) {
     if (a_intf->OpenRecord(kRecordSeed, kRecordVer))
         a_intf->WriteRecordData(_seed);
 
-    // Configuração (modo + bias)
+    // Configuration (mode + bias)
     if (a_intf->OpenRecord(kRecordCfg, kRecordVer)) {
         a_intf->WriteRecordData(static_cast<std::uint8_t>(_mode));
         a_intf->WriteRecordData(_bias);
@@ -582,6 +629,10 @@ void WeightManager::Save(SKSE::SerializationInterface* a_intf) {
     // Re-roll hotkey
     if (a_intf->OpenRecord(kRecordKey, kRecordVer))
         a_intf->WriteRecordData(_reRollKey);
+
+    // Male-bodies master toggle
+    if (a_intf->OpenRecord(kRecordMale, kRecordVer))
+        a_intf->WriteRecordData(_maleBodies);
 
     // Per-actor override seeds (hotkey re-rolls) — count followed by id/seed pairs.
     if (a_intf->OpenRecord(kRecordOvr, kRecordVer)) {
@@ -621,6 +672,8 @@ void WeightManager::Load(SKSE::SerializationInterface* a_intf) {
             a_intf->ReadRecordData(_athleticRatio);
         } else if (type == kRecordKey) {
             a_intf->ReadRecordData(_reRollKey);
+        } else if (type == kRecordMale) {
+            a_intf->ReadRecordData(_maleBodies);
         } else if (type == kRecordOvr) {
             std::uint32_t count{};
             a_intf->ReadRecordData(count);
@@ -660,6 +713,7 @@ void WeightManager::Revert() {
     _unusualRatio = Config::g_defaultUnusualRatio;
     _breastUnusualRatio = Config::g_defaultBreastUnusualRatio;
     _athleticRatio = Config::g_defaultAthleticRatio;
+    _maleBodies   = Config::g_defaultMaleBodies;
     _reRollKey = Config::g_defaultReRollKey;
     _seed         = OBW::CollectEntropy();
     _overrideSeed.clear();

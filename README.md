@@ -18,7 +18,9 @@ BodySlide preset library required, and equipped clothing follows the generated s
   their build. Suppressed by body fat, so it reads correctly.
 - **Unusual bodies** — a rare out-of-distribution roll: ultra-petite/ultra-thick (women) or
   ultra-skinny/ultra-huge (men), disproportionate and atypical.
-- **Re-roll hotkey** (`O`) — aim at an NPC for a brand-new body.
+- **Re-roll hotkey** (re-bindable, default `[` / `{`) — aim at an NPC for a brand-new body.
+- **Male bodies toggle** — turn the whole male-body feature on or off; when off, OBW leaves
+  men entirely to OBody / vanilla.
 - **Clothing refit** — armor built with morphs follows the new shape.
 - **Performance** — distance-aware lazy loading drains the morph queue gradually and
   nearest-first, so entering a crowded cell doesn't stutter.
@@ -28,8 +30,9 @@ BodySlide preset library required, and equipped clothing follows the generated s
 ## MCM
 
 Distribution mode (Seeded / Random / NPC Default), Bias, Seed, Morph intensity (master),
-**Fantasy NPCs %**, **Unusual bodies %**, **Unusual breasts %**, **Athletic women %**, and
-a Body Shape mode (Procedural Morphs / OBody Presets).
+**Fantasy NPCs %**, **Unusual bodies %**, **Unusual breasts %**, **Athletic women %**, a
+Body Shape mode (Procedural Morphs / OBody Presets), a **Male bodies** on/off toggle, and a
+re-bindable **Re-roll key**.
 
 ## Requirements
 
@@ -43,9 +46,10 @@ a Body Shape mode (Procedural Morphs / OBody Presets).
 
 ## Installation
 
-Install with a mod manager and enable `OBodyNGWeight.esp`. Load it after OBody NG. Open the
-MCM, choose Procedural Morphs, and (recommended) set OBody's actor-selection hotkey to None so
-`O` only triggers this mod's re-roll.
+Install with a mod manager and enable `OBodyNGWeight.esp` (it's ESL-flagged, so it doesn't use
+a regular load-order slot). Load it after OBody NG. Open the MCM, choose Procedural Morphs, and
+(recommended) set OBody's actor-selection hotkey to None so the re-roll key (default `[` / `{`,
+re-bindable in the MCM) only triggers this mod.
 
 ## How it works
 
