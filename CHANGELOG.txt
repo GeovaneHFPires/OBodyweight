@@ -11,9 +11,12 @@ men (HIMBO). Highlights:
 - Muscle tone: athletic women (visible definition) with a rare "snu snu" Amazon tier;
   men get tone from their build. Suppressed by body fat.
 - Unusual bodies: rare out-of-distribution rolls (ultra-petite/thick, ultra-skinny/huge).
-- Re-roll hotkey (O), clothing refit, distance-aware lazy loading.
+- Re-roll hotkey (re-bindable, default [ / {), clothing refit, distance-aware lazy loading.
+- Male bodies on/off master toggle — turn the whole male-body feature off and OBody /
+  vanilla handle men.
+- ESL-flagged plugin — doesn't use a regular load-order slot.
 - Full MCM: distribution mode, bias, seed, morph intensity, fantasy %, unusual %,
-  unusual breasts %, athletic women %, body shape mode.
+  unusual breasts %, athletic women %, body shape mode, male-bodies toggle, re-roll key.
 - FOMOD installer with Realistic / Balanced / Fantasy starting presets + an INI for
   new-game defaults.
 - All logic in the C++ SKSE plugin; Papyrus is a thin relay.
