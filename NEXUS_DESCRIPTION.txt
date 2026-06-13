@@ -86,9 +86,8 @@ SHOUT OUTS
 SOURCE CODE
 ==================================================================
 [b]Open source.[/b] The full source — C++ SKSE plugin and Papyrus scripts — is on GitHub:
-[url=https://github.com/YOURUSER/OBodyNGWeight]https://github.com/YOURUSER/OBodyNGWeight[/url]
-(Replace with your repo URL.) The download also bundles the compiled DLL and the Papyrus
-.psc scripts; the C++ source lives in the repo.
+[url=https://github.com/GeovaneHFPires/OBodyweight]https://github.com/GeovaneHFPires/OBodyweight[/url]
+The download also bundles the compiled DLL and the Papyrus .psc scripts.
 
 
 ==================================================================
