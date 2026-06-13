@@ -27,7 +27,7 @@ MAIN FEATURES
 ==================================================================
 [list]
 [*][b]Procedural bodies, women and men[/b] — women use CBBE 3BA sliders, men use HIMBO. Magnitudes calibrated to a real 1900+ preset library, so the spread looks natural.
-[*][b]Seam-free by design[/b] — the NPC's real weight value is never touched. Body size variety comes entirely from morphs, so the head, body and worn outfit always agree: [b]no neck seams[/b] and no body-vs-outfit weight mismatch.
+[*][b]Seam-free[/b] — the head, body and worn outfit always match, with [b]no neck seams[/b].
 [*][b]Realistic + fantasy mix[/b] — most NPCs are grounded; a tunable minority are exaggerated bombshells / bodybuilders.
 [*][b]Body traits[/b] — independent per-NPC features. Women: busty, perky/saggy, wide hips, hip dips, wasp waist, soft belly, thick thighs, thigh gap. Men: big/flat pecs, V-taper, barrel chest, gut, thick/skinny legs.
 [*][b]Muscle tone[/b] — a tunable fraction of women are athletic, with visible abs, arm and leg definition, including a rare super-toned [b]"snu snu"[/b] Amazon. Men get tone automatically from their build. Body fat smooths it away, so it reads correctly.
@@ -35,7 +35,7 @@ MAIN FEATURES
 [*][b]Unusual bodies[/b] — a rare out-of-distribution roll: ultra-petite/ultra-thick (women) or ultra-skinny/ultra-huge (men), disproportionate and atypical.
 [*][b]Re-roll hotkey[/b] — aim at any NPC and press the hotkey (re-bindable, default [ / {) for a brand-new body on the spot. [b]VR-ready[/b]: in VR it targets the NPC you're looking at (HMD gaze), or yourself if nothing is in view.
 [*][b]Clothing refit[/b] — armor built with morphs follows the new shape.
-[*][b]Performance[/b] — distance-aware lazy loading drains the morph queue gradually and nearest-first, and bodies rebuild with the fewest passes, so entering a crowded cell stays smooth.
+[*][b]Performance[/b] — distance-aware lazy loading drains the morph queue gradually and nearest-first, so entering a crowded cell stays smooth.
 [/list]
 
 [b]MCM:[/b] Body Shape mode (Procedural Morphs / OBody Presets), Distribution (Seeded / Random / NPC Default), Morph intensity, Fantasy NPCs %, Unusual bodies %, Unusual breasts %, Athletic women %, [b]Male bodies[/b] toggle, [b]Male build[/b], re-bindable Re-roll key, Bias and Seed. A FOMOD installer offers Realistic / Balanced / Fantasy starting presets.
