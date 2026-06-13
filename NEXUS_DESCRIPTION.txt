@@ -1,0 +1,97 @@
+OBodyNG Weight — Nexus page copy.
+Each block below maps to a field in the Nexus editor. Paste the BBCode of each block
+into its matching field. If your page uses one big Description box instead, paste the
+whole thing minus the "====" header lines.
+
+
+==================================================================
+SUMMARY  (short one-line field)
+==================================================================
+Procedural weight and body randomization for OBody NG — women and men. Every NPC gets a unique, proportional body with no preset library needed, and clothing follows the shape.
+
+
+==================================================================
+DESCRIPTION
+==================================================================
+[size=6][b]OBodyNG Weight[/b][/size]
+
+[i]Procedural NPC weight and body randomization for OBody NG — for women and men.[/i]
+
+Every NPC gets a unique, proportional body — [b]no BodySlide preset library required[/b] — and equipped clothing follows the generated shape. Walk into a town and no two people share the same figure.
+
+Instead of OBody picking from a library of preset files you have to collect and curate, this mod [b]generates the body directly[/b] through SKEE morphs, per NPC, for [b]both sexes[/b]. All logic, RNG and state live in a C++ SKSE plugin; Papyrus is a thin relay. Bodies are deterministic within a playthrough, so an NPC looks the same every time you meet them.
+
+
+==================================================================
+MAIN FEATURES
+==================================================================
+[list]
+[*][b]Procedural bodies, women and men[/b] — women use CBBE 3BA sliders, men use HIMBO. Magnitudes calibrated to a real 1900+ preset library, so the spread looks natural.
+[*][b]Weight randomization[/b] — applied before the body is built, so face and hands match (and no neck seams).
+[*][b]Realistic + fantasy mix[/b] — most NPCs are grounded; a tunable minority are exaggerated bombshells / bodybuilders.
+[*][b]Body traits[/b] — independent per-NPC features. Women: busty, perky/saggy, wide hips, hip dips, wasp waist, soft belly, thick thighs, thigh gap. Men: big/flat pecs, V-taper, barrel chest, gut, thick/skinny legs.
+[*][b]Muscle tone[/b] — a tunable fraction of women are athletic, with visible abs, arm and leg definition, including a rare super-toned [b]"snu snu"[/b] Amazon. Men get tone automatically from their build. Body fat smooths it away, so it reads correctly.
+[*][b]Unusual bodies[/b] — a rare out-of-distribution roll: ultra-petite/ultra-thick (women) or ultra-skinny/ultra-huge (men), disproportionate and atypical.
+[*][b]Re-roll hotkey[/b] — aim at any NPC and press the hotkey (re-bindable, default [ / {) for a brand-new body on the spot.
+[*][b]Clothing refit[/b] — armor built with morphs follows the new shape.
+[*][b]Performance[/b] — distance-aware lazy loading drains the morph queue gradually and nearest-first, so entering a crowded cell doesn't stutter.
+[/list]
+
+[b]MCM:[/b] Body Shape mode (Procedural Morphs / OBody Presets), Distribution (Seeded / Random / NPC Default), Morph intensity, Fantasy NPCs %, Unusual bodies %, Unusual breasts %, Athletic women %, re-bindable Re-roll key, Bias and Seed. A FOMOD installer offers Realistic / Balanced / Fantasy starting presets.
+
+
+==================================================================
+INSTALLATION INSTRUCTIONS
+==================================================================
+[list=1]
+[*]Install with a mod manager (MO2 / Vortex) and enable [b]OBodyNGWeight.esp[/b], loaded after OBody NG.
+[*]The FOMOD installer lets you pick a starting preset: Realistic, Balanced, or Fantasy (all adjustable later in the MCM).
+[*]In-game, open the "OBodyNG Weight" MCM and choose the [b]Procedural Morphs[/b] body mode.
+[*]Recommended: in OBody's own MCM, set its actor-selection hotkey to [b]None[/b], so the re-roll key only triggers this mod.
+[/list]
+Your CBBE/3BA (female) and HIMBO (male) bodies must be built in BodySlide with [b]"Build Morphs" checked[/b]. Build your armors with morphs too if you want clothing to follow the body.
+
+
+==================================================================
+REQUIREMENTS
+==================================================================
+[list]
+[*]SKSE64
+[*]Address Library for SKSE Plugins
+[*][b]OBody NG[/b] (hard requirement)
+[*]RaceMenu / SKEE
+[*]SkyUI (for the MCM)
+[*]A [b]CBBE / CBBE 3BA[/b] female body and a [b]HIMBO[/b] male body, both built in BodySlide with "Build Morphs" checked.
+[/list]
+
+
+==================================================================
+SHOUT OUTS
+==================================================================
+[list]
+[*][b]OBody NG[/b] by Aietos — and the original [b]OBody[/b] by Sinhime. This mod is an add-on to OBody NG.
+[*][b]RaceMenu / SKEE[/b] by Expired — the NiOverride body-morph system.
+[*][b]SKSE64[/b] by ianpatt, behippo, purplelunchbox and team.
+[*][b]Address Library[/b] by meh321.
+[*][b]CommonLibSSE-NG[/b] by CharmedBaryon (fork of CommonLibSSE by Ryan-rsm-McKenzie).
+[*][b]SkyUI[/b] by the SkyUI Team.
+[*][b]CBBE / CBBE 3BA[/b] by Ousnius, Caliente and Acro748.
+[*][b]HIMBO[/b] by Shino.
+[*][b]BodySlide and Outfit Studio[/b] by Ousnius & Caliente.
+[*][b]spdlog[/b] by Gabriel "gabime" Melman.
+[/list]
+
+
+==================================================================
+SOURCE CODE
+==================================================================
+[b]Open source.[/b] The full source — C++ SKSE plugin and Papyrus scripts — is on GitHub:
+[url=https://github.com/YOURUSER/OBodyNGWeight]https://github.com/YOURUSER/OBodyNGWeight[/url]
+(Replace with your repo URL.) The download also bundles the compiled DLL and the Papyrus
+.psc scripts; the C++ source lives in the repo.
+
+
+==================================================================
+PERMISSIONS  (set to your preference on the Nexus page)
+==================================================================
+Do not re-upload the packaged mod. Patches and translations are welcome — please link back here. The source is open on GitHub (link above); contributions / pull requests welcome.

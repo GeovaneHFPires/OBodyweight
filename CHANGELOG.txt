@@ -1,0 +1,19 @@
+Version 1.0.0 — Initial release
+
+Procedural NPC weight and body randomization for OBody NG, for women (CBBE 3BA) and
+men (HIMBO). Highlights:
+
+- Per-NPC procedural bodies via SKEE morphs — no preset library needed. Deterministic
+  within a playthrough (same NPC always looks the same).
+- Weight randomization applied before the body is built (no neck seams).
+- Realistic majority + tunable fantasy minority.
+- Body traits (independent per-NPC features) for both sexes.
+- Muscle tone: athletic women (visible definition) with a rare "snu snu" Amazon tier;
+  men get tone from their build. Suppressed by body fat.
+- Unusual bodies: rare out-of-distribution rolls (ultra-petite/thick, ultra-skinny/huge).
+- Re-roll hotkey (O), clothing refit, distance-aware lazy loading.
+- Full MCM: distribution mode, bias, seed, morph intensity, fantasy %, unusual %,
+  unusual breasts %, athletic women %, body shape mode.
+- FOMOD installer with Realistic / Balanced / Fantasy starting presets + an INI for
+  new-game defaults.
+- All logic in the C++ SKSE plugin; Papyrus is a thin relay.
