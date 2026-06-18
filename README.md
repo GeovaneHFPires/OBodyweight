@@ -81,6 +81,13 @@ lean↔full range). **Procedural Oriented** blends the generated shape toward th
 
 - Female slider names target CBBE 3BA; male names target HIMBO. Other bodies use different
   slider names and would need the tables adjusted.
+- **Exclude NPCs by mod** — to keep OBW off a follower/NPC mod's hand-made bodies, open the MCM's
+  **Exclusions** page and tick the mod: it lists every plugin that adds NPCs, one checkbox each.
+  Excluded NPCs are left to OBody / vanilla / the source mod. Choices are saved globally (across
+  saves) and apply to NPCs generated afterward (bodies already applied aren't reverted).
+  Advanced: you can also list plugin names (one per line, `.esp` / `.esl` / `.esm`) in any
+  `SKSE\Plugins\OBodyNGWeight_Exclusions*.txt` file — merged on game start, so patches can ship
+  their own. Case-insensitive.
 
 ## For mod authors
 

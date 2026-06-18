@@ -34,6 +34,7 @@ MAIN FEATURES
 [*][b]Clothes follow the body[/b] — armor and outfits fit the generated shape, with no neck seams or body-vs-clothes mismatch.
 [*][b]Muscle tone[/b] — some women are athletic, with real definition, up to a rare super-fit "amazon". Men get tone from their build. A softer body smooths it away naturally.
 [*][b]Per-sex switches[/b] — turn female and male bodies on or off independently (let OBody/vanilla handle a sex), plus a slider to make men slimmer or beefier to taste.
+[*][b]Exclude any NPC mod[/b] — a checkbox list in the menu shows every mod that adds NPCs; tick the ones whose hand-made bodies you want left alone (followers, custom NPCs), and OBW won't touch them.
 [*][b]Re-roll hotkey[/b] — aim at anyone and press a key for a brand-new body on the spot (re-bindable). Works in VR (it uses where you're looking).
 [*][b]Refresh everyone[/b] — a one-click "Reprocess all loaded NPCs" button in the menu re-applies everything to the people around you after you change a setting — no waiting, no reloading.
 [*][b]Light and tidy[/b] — easy on performance, and it doesn't take up a load-order slot. Works on Skyrim SE, AE and VR.

@@ -1,3 +1,18 @@
+Version 1.4.1
+
+- Exclude NPCs by mod (MCM): a new "Exclusions" page lists every plugin that adds NPCs, each with a
+  checkbox - tick a mod and OBW leaves its NPCs untouched (handy for follower/NPC mods that ship
+  their own hand-made bodies). Your choices are saved globally, across all saves. Applies to NPCs
+  generated afterward; bodies already applied aren't reverted.
+- Advanced: you can also list plugin names (one per line, .esp/.esl/.esm) in any
+  SKSE\Plugins\OBodyNGWeight_Exclusions*.txt file - merged on game start, so patches can ship their
+  own. Case-insensitive.
+- "Generate new seed" now only affects NPCs you haven't met yet: already-seen NPCs keep their exact
+  body and archetype, even after reloading. To change one specific NPC, use the re-roll hotkey.
+- More body variety: NPCs of the same body type now look noticeably less alike (stronger per-NPC,
+  per-region variation), while keeping smooth shapes and recognizable body types.
+
+
 Version 1.4.0
 
 New body modes

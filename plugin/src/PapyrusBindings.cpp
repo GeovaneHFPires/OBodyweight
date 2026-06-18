@@ -1,6 +1,7 @@
 #include "WeightManager.hpp"
 #include "PresetManager.hpp"
 #include "MorphInterface.hpp"
+#include "Config.hpp"
 #include <RE/Skyrim.h>
 #include <SKSE/SKSE.h>
 #include <Windows.h>   // GetModuleHandleA (CBPC detection)
@@ -90,6 +91,29 @@ bool ApplyPresetMorphs(RE::StaticFunctionTag*, RE::BSFixedString a_preset, RE::A
 // Debug: write a line from Papyrus into OBodyNGWeight.log — only when debug logging is ON.
 void Log(RE::StaticFunctionTag*, RE::BSFixedString a_msg) {
     if (OBW::g_debugLog) SKSE::log::info("[PSC] {}", a_msg.c_str());
+}
+
+// True if the actor's source plugin is in the exclusion list (OBW should leave it alone).
+bool IsExcluded(RE::StaticFunctionTag*, RE::Actor* a_actor) {
+    return Config::IsActorExcluded(a_actor);
+}
+
+// MCM exclusions: the list of plugins that ADD NPCs (for the checkbox list), + get/set the
+// MCM-managed exclusion of one plugin (SetPluginExcluded persists to the MCM exclusions file).
+std::vector<RE::BSFixedString> GetNpcPlugins(RE::StaticFunctionTag*) {
+    const auto v = Config::GetNpcPlugins();
+    std::vector<RE::BSFixedString> out;
+    out.reserve(v.size());
+    for (const auto& n : v) out.emplace_back(n.c_str());
+    return out;
+}
+
+bool IsPluginExcluded(RE::StaticFunctionTag*, RE::BSFixedString a_plugin) {
+    return Config::IsPluginExcluded(a_plugin.c_str());
+}
+
+void SetPluginExcluded(RE::StaticFunctionTag*, RE::BSFixedString a_plugin, bool a_on) {
+    Config::SetPluginExcluded(a_plugin.c_str(), a_on);
 }
 
 bool GetDebugLog(RE::StaticFunctionTag*) {
@@ -352,6 +376,10 @@ bool Register(RE::BSScript::IVirtualMachine* a_vm) {
     a_vm->RegisterFunction("Log",                 kScript, Log);
     a_vm->RegisterFunction("GetDebugLog",         kScript, GetDebugLog);
     a_vm->RegisterFunction("SetDebugLog",         kScript, SetDebugLog);
+    a_vm->RegisterFunction("IsExcluded",          kScript, IsExcluded);
+    a_vm->RegisterFunction("GetNpcPlugins",       kScript, GetNpcPlugins);
+    a_vm->RegisterFunction("IsPluginExcluded",    kScript, IsPluginExcluded);
+    a_vm->RegisterFunction("SetPluginExcluded",   kScript, SetPluginExcluded);
     a_vm->RegisterFunction("GetMode",             kScript, GetMode);
     a_vm->RegisterFunction("SetMode",             kScript, SetMode);
     a_vm->RegisterFunction("GetBias",             kScript, GetBias);

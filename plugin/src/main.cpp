@@ -22,6 +22,8 @@ SKSEPluginLoad(const SKSE::LoadInterface* a_skse) {
 
     // Read INI defaults (FOMOD-installed preset) before WeightManager is constructed.
     OBW::Config::Load();
+    // Plugin exclusion list (NPCs from these .esp/.esl/.esm are left untouched).
+    OBW::Config::LoadExclusions();
 
     // Papyrus
     auto* papyrus = SKSE::GetPapyrusInterface();

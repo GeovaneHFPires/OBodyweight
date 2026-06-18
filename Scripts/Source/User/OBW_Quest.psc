@@ -81,6 +81,10 @@ Event OnActorGenerated(Actor akActor, string presetName)
     ; HasMorphsApplied is one-shot: returns true and auto-clears if we just called
     ; UpdateModelWeight(true) for this actor. Suppresses the OBody re-fire loop.
     int gm = OBW_Native.GetBodyMode()
+    ; Excluded plugins: never queue NPCs from an excluded .esp.
+    if OBW_Native.IsExcluded(akActor)
+        return
+    endif
     ; Mode 1 passthrough (Weight mode = NPC Default) -> leave the actor to OBody.
     if gm == 1 && OBW_Native.GetMode() == 2
         return
@@ -139,7 +143,7 @@ Event OnUpdate()
     ; true between OBody assigning and us injecting+unassigning), inject it. Mode 1, non-passthrough.
     if OBW_Native.GetBodyMode() == 1 && OBW_Native.GetMode() != 2
         Actor target = Game.GetCurrentCrosshairRef() as Actor
-        if target && OBodyNative.GetPresetAssignedToActor(target) != ""
+        if target && !OBW_Native.IsExcluded(target) && OBodyNative.GetPresetAssignedToActor(target) != ""
             OBW_Native.QueueForMorphs(target)
             RegisterForSingleUpdate(0.2)    ; drain it now
             return
@@ -149,6 +153,10 @@ Event OnUpdate()
 EndEvent
 
 Function ApplyMorphs(Actor akActor)
+    ; Excluded plugins (OBodyNGWeight_Exclusions*.txt): leave those NPCs entirely to OBody/vanilla.
+    if OBW_Native.IsExcluded(akActor)
+        return
+    endif
     ; Body mode 1 = OBody Presets, now WEIGHT-DRIVEN: re-apply the OBody-assigned preset
     ; interpolated at the per-NPC mock weight (faithful curve + synthesized lean<->full on
     ; static volumes). Modes 0 (Procedural) and 2 (Procedural Oriented) use the path below.

@@ -1,5 +1,11 @@
 #pragma once
 
+#include <string>
+#include <unordered_set>
+#include <vector>
+
+namespace RE { class Actor; }
+
 namespace OBW::Config {
 
 // Default values read from Data/SKSE/Plugins/OBodyNGWeight.ini at plugin load.
@@ -25,5 +31,22 @@ inline bool  g_defaultDebugLog           = false;
 
 // Parse the INI. Call once in SKSEPluginLoad, before WeightManager is constructed.
 void Load();
+
+// Plugins (lowercased) whose NPCs OBW leaves untouched. Two effective sources:
+//  - g_mcmExcluded : managed by the MCM checkboxes, saved to OBodyNGWeight_Exclusions_MCM.txt (global).
+//  - g_fileExcluded: any other OBodyNGWeight_Exclusions*.txt (hand-edited / patches), read-only.
+inline std::unordered_set<std::string> g_mcmExcluded;
+inline std::unordered_set<std::string> g_fileExcluded;
+
+// (Re)load both sets from disk. Call once at load.
+void LoadExclusions();
+
+// True if the actor's base (or reference) originates from / is overridden by an excluded plugin.
+bool IsActorExcluded(RE::Actor* a_actor);
+
+// MCM helpers: checkbox state, toggle (rewrites the MCM file), and the list of NPC-adding plugins.
+bool IsPluginExcluded(const char* a_plugin);
+void SetPluginExcluded(const char* a_plugin, bool a_on);
+std::vector<std::string> GetNpcPlugins();
 
 }  // namespace OBW::Config

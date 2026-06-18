@@ -21,8 +21,15 @@ int _debugOption    = -1
 string[] _modeLabels
 string[] _bodyLabels
 
+string[] _exclPlugins   ; Exclusions page: plugin name per toggle (parallel to _exclOptions)
+int[]    _exclOptions   ; Exclusions page: option ID per plugin
+
 Event OnConfigInit()
     ModName = "OBodyNG Weight"
+
+    Pages = new string[2]
+    Pages[0] = "Settings"
+    Pages[1] = "Exclusions"
 
     _modeLabels = new string[3]
     _modeLabels[0] = "Random"
@@ -50,6 +57,11 @@ Event OnGameReload()
 EndEvent
 
 Event OnPageReset(string page)
+    if page == "Exclusions"
+        BuildExclusionsPage()
+        return
+    endif
+
     SetCursorFillMode(TOP_TO_BOTTOM)
 
     int gm = OBW_Native.GetBodyMode()    ; 0 Procedural, 1 OBody Presets, 2 Procedural Oriented
@@ -129,6 +141,27 @@ Event OnPageReset(string page)
     AddHeaderOption("Debug")
     _debugOption = AddToggleOption("Debug logging", OBW_Native.GetDebugLog())
 EndEvent
+
+; Exclusions page: one checkbox per plugin that adds NPCs. Checked = OBW leaves that mod's NPCs alone.
+Function BuildExclusionsPage()
+    SetCursorFillMode(TOP_TO_BOTTOM)
+    AddHeaderOption("Exclude NPCs by plugin")
+    _exclPlugins = OBW_Native.GetNpcPlugins()
+    if _exclPlugins.Length == 0
+        AddTextOption("(no NPC-adding plugins found)", "", OPTION_FLAG_DISABLED)
+        return
+    endif
+    _exclOptions = new int[128]
+    int i = 0
+    while i < _exclPlugins.Length
+        _exclOptions[i] = AddToggleOption(_exclPlugins[i], OBW_Native.IsPluginExcluded(_exclPlugins[i]))
+        i += 1
+    endwhile
+    if _exclPlugins.Length >= 128
+        AddEmptyOption()
+        AddHeaderOption("List capped at 128 - use OBodyNGWeight_Exclusions.txt for more")
+    endif
+EndFunction
 
 Event OnOptionMenuOpen(int option)
     if option == _modeOption
@@ -276,6 +309,18 @@ Event OnOptionSelect(int option)
         SetToggleOptionValue(_debugOption, newDbg)
     elseif option == _reprocessOption
         SendModEvent("OBW_Reprocess")   ; OBW_Quest re-queues all loaded NPCs + arms the drain
+    elseif _exclPlugins
+        ; Exclusions page: a per-plugin checkbox.
+        int i = 0
+        while i < _exclPlugins.Length
+            if option == _exclOptions[i]
+                bool nx = !OBW_Native.IsPluginExcluded(_exclPlugins[i])
+                OBW_Native.SetPluginExcluded(_exclPlugins[i], nx)
+                SetToggleOptionValue(_exclOptions[i], nx)
+                return
+            endif
+            i += 1
+        endwhile
     endif
 EndEvent
 
@@ -312,5 +357,9 @@ Event OnOptionHighlight(int option)
         SetInfoText("Generates a new random seed. Already-processed NPCs keep their current values — only new NPCs use the new seed.")
     elseif option == _debugOption
         SetInfoText("Writes detailed per-NPC diagnostics to OBodyNGWeight.log (preset applied, load/poll events). OFF by default. Turn it ON only when troubleshooting — it bloats the log in crowded areas. Warnings and errors are always logged.")
+    elseif option == _reprocessOption
+        SetInfoText("Re-applies the current generation + physics to every NPC loaded around you, without waiting for cell reloads. Handy after changing settings.")
+    elseif _exclPlugins
+        SetInfoText("Check to EXCLUDE NPCs from this plugin: OBW leaves them to OBody / vanilla / the source mod (no procedural body, no preset re-application). Saved globally across saves. Applies to newly generated NPCs (use Reprocess, or it takes hold as NPCs load).")
     endif
 EndEvent

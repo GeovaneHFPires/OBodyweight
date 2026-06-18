@@ -1,0 +1,19 @@
+; OBodyNG Weight - plugin exclusions
+; ---------------------------------------------------------------------------
+; List .esp / .esl / .esm plugin names (one per line) whose NPCs OBW must NOT touch.
+; Handy for follower/NPC mods that ship their own hand-made bodies: OBW leaves those
+; NPCs entirely to OBody / vanilla / the source mod (no procedural morphs, no preset
+; re-application, no weight).
+;
+; - One plugin name per line, with the extension (e.g. MyFollower.esp).
+; - Matching is case-insensitive. An NPC is excluded if the listed plugin ADDED it
+;   or is the winning override for it.
+; - Lines starting with ; or # are comments.
+; - Other mods/patches can ship their own list as OBodyNGWeight_Exclusions_<name>.txt
+;   in this folder; all such files are merged.
+; - Changes take effect on the next game start.
+;
+; Examples (remove the leading ; to enable):
+; MyCustomFollower.esp
+; SomeNPCOverhaul.esm
+; UniqueNPCsPack.esl

@@ -25,6 +25,17 @@ Function Log(string asMsg) global native
 bool Function GetDebugLog() global native
 Function SetDebugLog(bool abOn) global native
 
+; True if the actor's source plugin is excluded (MCM checkbox or any OBodyNGWeight_Exclusions*.txt).
+; OBW leaves such NPCs untouched (no procedural morphs, no preset re-application).
+bool Function IsExcluded(Actor akActor) global native
+
+; MCM exclusions. GetNpcPlugins = sorted list of plugins that ADD NPCs (for the checkbox list, capped
+; at 128). IsPluginExcluded/SetPluginExcluded read/toggle the MCM-managed exclusion of one plugin
+; (Set persists to OBodyNGWeight_Exclusions_MCM.txt, global across saves).
+string[] Function GetNpcPlugins() global native
+bool Function IsPluginExcluded(string asPlugin) global native
+Function SetPluginExcluded(string asPlugin, bool abOn) global native
+
 ; Distribution mode: 0=Random, 1=Seeded/Deterministic, 2=NpcDefault
 int Function GetMode() global native
 Function SetMode(int aiMode) global native

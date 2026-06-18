@@ -119,10 +119,15 @@ static const std::unordered_map<std::string, MorphDef> kMorphTable{
 };
 
 // Per-NPC per-region perturbation of the archetype delta (2026-06-17 variety pass): each instance
-// of the same archetype gets its own offset, so two Pears (or two Balanced) aren't clones. Kept
-// modest (+/-6) so it adds variety without lumpy junctions; suppressed for unusual bodies (their
-// character is the extreme frame). amplitude in 0-100 slider space.
-constexpr float kDeltaJitter = 6.0f;
+// of the same archetype gets its own offset, so two Pears (or two Balanced) aren't clones.
+// Raised to +/-10 in the 2026-06-18 differentiation pass (sim_motor.cpp): cuts same-archetype
+// near-twins while keeping region junctions smooth and archetypes legible; suppressed for unusual
+// bodies (their character is the extreme frame). amplitude in 0-100 slider space.
+constexpr float kDeltaJitter = 10.0f;
+// Global multiplier on the per-region independence noise (the dominant variety lever, per the
+// ablation in sim_motor.cpp). x1.3: roughly halves same-archetype clones vs x1.0, at a modest
+// junction/separability cost (still well inside the smooth, archetype-legible frontier).
+constexpr float kIndepScale = 1.3f;
 
 // ── Trait system ────────────────────────────────────────────────────────────
 // Each NPC rolls AT MOST ONE option per category (mutually exclusive), seeded
@@ -363,7 +368,7 @@ float TableVolume(std::uint32_t seedBase, float frameScore, const std::string& k
         if (hasActor) {
             const auto morphHash = static_cast<std::uint32_t>(std::hash<std::string>{}(key));
             std::mt19937 noiseRng{ seedBase ^ morphHash };
-            float indep = def.independence;
+            float indep = def.independence * kIndepScale;
             if (unusualBody) indep *= 2.5f;
             base += std::uniform_real_distribution<float>(-50.0f, 50.0f)(noiseRng) * indep;
         }
@@ -786,10 +791,20 @@ int WeightManager::ReprocessAllLoaded() {
 
 void WeightManager::RegenerateSeed() {
     std::scoped_lock lock(_mutex);
+    // Option B: a new seed must only affect NPCs OBW hasn't generated yet. Pin every
+    // already-processed NPC (and its base, which drives the weight) to its CURRENT effective
+    // seed BEFORE changing the global one, so its body + archetype stay identical even across
+    // reloads (_overrideSeed is serialized). try_emplace preserves any explicit per-actor
+    // re-roll already set by the hotkey. Only NOT-yet-seen NPCs pick up the new seed.
+    for (RE::FormID id : _processed) {
+        _overrideSeed.try_emplace(id, GetActorSeed(id));
+        if (auto* a = RE::TESForm::LookupByID<RE::Actor>(id)) {
+            if (auto* base = a->GetActorBase())
+                _overrideSeed.try_emplace(base->GetFormID(), GetActorSeed(base->GetFormID()));
+        }
+    }
     _seed = OBW::CollectEntropy();
-    _overrideSeed.clear();
-    ClearProcessed();
-    SKSE::log::info("OBW: seed regenerated → {}", _seed);
+    SKSE::log::info("OBW: seed regenerated → {} (pinned {} already-seen NPCs)", _seed, _processed.size());
 }
 
 // ---------------------------------------------------------------------------
