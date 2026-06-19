@@ -6,6 +6,31 @@
 
 namespace OBW::PapyrusBindings { bool Register(RE::BSScript::IVirtualMachine*); }
 
+namespace {
+// Independent distribution sink: when an NPC's 3D loads in a PROCEDURAL body mode, watch it so the
+// procedural fallback can self-distribute if OBody never fires for it (empty preset library, or an
+// NPC OBody's own distribution skips). In OBody-preset mode we stay off (that mode relies on OBody).
+class ActorLoadSink final : public RE::BSTEventSink<RE::TESObjectLoadedEvent> {
+public:
+    static ActorLoadSink* GetSingleton() {
+        static ActorLoadSink s;
+        return &s;
+    }
+    RE::BSEventNotifyControl ProcessEvent(const RE::TESObjectLoadedEvent* a_event,
+                                          RE::BSTEventSource<RE::TESObjectLoadedEvent>*) override {
+        if (!a_event || !a_event->loaded) return RE::BSEventNotifyControl::kContinue;
+        auto& wm = OBW::WeightManager::GetSingleton();
+        if (wm.GetBodyMode() == OBW::BodyMode::kOBodyPreset) return RE::BSEventNotifyControl::kContinue;
+        auto* actor = RE::TESForm::LookupByID<RE::Actor>(a_event->formID);
+        if (!actor || actor == RE::PlayerCharacter::GetSingleton()) return RE::BSEventNotifyControl::kContinue;
+        if (!actor->GetActorBase() || !actor->HasKeywordString("ActorTypeNPC"))
+            return RE::BSEventNotifyControl::kContinue;   // humanoid NPCs only (skip creatures/objects)
+        wm.WatchForFallback(actor->GetFormID());
+        return RE::BSEventNotifyControl::kContinue;
+    }
+};
+}  // namespace
+
 SKSEPluginLoad(const SKSE::LoadInterface* a_skse) {
     SKSE::Init(a_skse);
 
@@ -48,15 +73,22 @@ SKSEPluginLoad(const SKSE::LoadInterface* a_skse) {
     // OBody-preset path apply all morphs from C++ (no Papyrus per-slider calls, no 128-array cap).
     if (auto* messaging = SKSE::GetMessagingInterface()) {
         messaging->RegisterListener([](SKSE::MessagingInterface::Message* a_msg) {
-            if (a_msg->type != SKSE::MessagingInterface::kPostPostLoad) return;
-            SKEE::InterfaceExchangeMessage msg;
-            SKSE::GetMessagingInterface()->Dispatch(
-                SKEE::InterfaceExchangeMessage::kExchangeInterface, &msg,
-                sizeof(SKEE::InterfaceExchangeMessage*), "skee");
-            if (msg.interfaceMap)
-                OBW::g_morph = static_cast<SKEE::IBodyMorphInterface*>(
-                    msg.interfaceMap->QueryInterface("BodyMorph"));
-            SKSE::log::info("SKEE BodyMorph interface: {}", OBW::g_morph ? "acquired" : "NOT FOUND");
+            if (a_msg->type == SKSE::MessagingInterface::kPostPostLoad) {
+                SKEE::InterfaceExchangeMessage msg;
+                SKSE::GetMessagingInterface()->Dispatch(
+                    SKEE::InterfaceExchangeMessage::kExchangeInterface, &msg,
+                    sizeof(SKEE::InterfaceExchangeMessage*), "skee");
+                if (msg.interfaceMap)
+                    OBW::g_morph = static_cast<SKEE::IBodyMorphInterface*>(
+                        msg.interfaceMap->QueryInterface("BodyMorph"));
+                SKSE::log::info("SKEE BodyMorph interface: {}", OBW::g_morph ? "acquired" : "NOT FOUND");
+            } else if (a_msg->type == SKSE::MessagingInterface::kDataLoaded) {
+                // Independent distribution: hook actor 3D-load so procedural mode works without OBody.
+                if (auto* holder = RE::ScriptEventSourceHolder::GetSingleton()) {
+                    holder->AddEventSink<RE::TESObjectLoadedEvent>(ActorLoadSink::GetSingleton());
+                    SKSE::log::info("OBW: actor-load sink installed (procedural self-distribution)");
+                }
+            }
         });
     }
 

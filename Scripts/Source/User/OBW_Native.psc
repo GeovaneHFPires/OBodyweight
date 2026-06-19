@@ -54,6 +54,9 @@ Actor Function GetNextMorphActor() global native
 ; Re-apply to EVERY loaded NPC (MCM button): re-queues them so the current generation + CBPC physics
 ; reapply without cell reloads. Keeps each body (same seed). Returns how many were queued.
 int Function ReprocessAllLoaded() global native
+; Procedural fallback (independent distribution): enqueue any loaded NPC OBody never handled, so procedural
+; bodies apply even with an EMPTY preset library. Polled from OnUpdate. Returns how many were enqueued.
+int Function SweepFallback() global native
 ; True if the queue still has actors waiting (used for throttled/lazy draining).
 bool Function HasMorphsPending() global native
 

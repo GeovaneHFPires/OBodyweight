@@ -149,7 +149,13 @@ Event OnUpdate()
             return
         endif
     endif
-    RegisterForSingleUpdate(2.0)            ; persistent light poll for manual preset assignments
+    ; Procedural fallback (independent distribution): self-distribute any loaded NPC OBody never handled,
+    ; so procedural bodies apply even with an EMPTY preset library. No-op in OBody-preset mode (gated in C++).
+    if OBW_Native.SweepFallback() > 0
+        RegisterForSingleUpdate(0.3)        ; drain the newly-enqueued NPCs now
+        return
+    endif
+    RegisterForSingleUpdate(2.0)            ; persistent light poll for manual preset assignments + fallback
 EndEvent
 
 Function ApplyMorphs(Actor akActor)

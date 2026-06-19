@@ -266,6 +266,12 @@ std::int32_t ReprocessAllLoaded(RE::StaticFunctionTag*) {
     return WeightManager::GetSingleton().ReprocessAllLoaded();
 }
 
+// Procedural fallback: enqueue any watched NPC OBody never handled (empty preset library / OBody-skipped).
+// Returns how many were newly enqueued, so the quest can arm the drain. Polled from OBW_Quest.OnUpdate.
+std::int32_t SweepFallback(RE::StaticFunctionTag*) {
+    return WeightManager::GetSingleton().SweepFallback();
+}
+
 void QueueForMorphs(RE::StaticFunctionTag*, RE::Actor* a_actor) {
     WeightManager::GetSingleton().QueueForMorphs(a_actor);
 }
@@ -388,6 +394,7 @@ bool Register(RE::BSScript::IVirtualMachine* a_vm) {
     a_vm->RegisterFunction("RegenerateSeed",      kScript, RegenerateSeed);
     a_vm->RegisterFunction("QueueForMorphs",      kScript, QueueForMorphs);
     a_vm->RegisterFunction("ReprocessAllLoaded",  kScript, ReprocessAllLoaded);
+    a_vm->RegisterFunction("SweepFallback",       kScript, SweepFallback);
     a_vm->RegisterFunction("GetNextMorphActor",   kScript, GetNextMorphActor);
     a_vm->RegisterFunction("HasMorphsPending",    kScript, HasMorphsPending);
     a_vm->RegisterFunction("GetBodyMode",         kScript, GetBodyMode);

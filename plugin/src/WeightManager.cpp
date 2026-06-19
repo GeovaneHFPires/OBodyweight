@@ -711,7 +711,13 @@ float WeightManager::GetMaleIntensity(RE::Actor* a_actor) {
 void WeightManager::QueueForMorphs(RE::Actor* a_actor) {
     if (!a_actor) return;
     std::scoped_lock lock(_mutex);
-    _morphQueue.push_back(a_actor->GetFormID());
+    const RE::FormID id = a_actor->GetFormID();
+    // Dedup against the LIVE queue only (NOT _processed): OBody re-fires on every cell crossing and we
+    // must re-process then to clear its re-applied preset, so a processed actor CAN be re-queued by the
+    // OBody / reprocess / re-roll paths. This guard only stops the same actor sitting in the queue twice
+    // (e.g. OBody's enqueue + the procedural fallback's enqueue racing for a deferred, far-away NPC).
+    if (std::find(_morphQueue.begin(), _morphQueue.end(), id) != _morphQueue.end()) return;
+    _morphQueue.push_back(id);
 }
 
 RE::Actor* WeightManager::GetNextMorphActor() {
@@ -748,7 +754,42 @@ RE::Actor* WeightManager::GetNextMorphActor() {
     if (!best) return nullptr;  // none within radius → keep them queued, process later
     auto it = std::find(_morphQueue.begin(), _morphQueue.end(), bestId);
     if (it != _morphQueue.end()) _morphQueue.erase(it);
+    _processed.insert(bestId);   // "OBW handled this actor this session" — the procedural fallback skips it
+    _fallbackWatch.erase(bestId);
     return best;
+}
+
+// Independent procedural distribution (so it works with an empty preset library / for OBody-skipped NPCs).
+// The actor-load sink calls this when an NPC loads in a procedural mode; we hold it for a short grace so
+// OBody (if it has presets) gets first crack via its own OnActorGenerated path.
+void WeightManager::WatchForFallback(RE::FormID a_id) {
+    if (!a_id) return;
+    std::scoped_lock lock(_mutex);
+    if (_processed.contains(a_id)) return;        // already handled this session
+    _fallbackWatch.try_emplace(a_id, kFallbackGraceTicks);
+}
+
+// Polled from Papyrus (OBW_Quest.OnUpdate). Counts down each watched NPC's grace; when it expires, if
+// OBody never handled it (not processed) and it is a real, loaded, non-excluded NPC, we self-distribute
+// (procedural). Returns how many were enqueued so the caller can arm the drain.
+int WeightManager::SweepFallback() {
+    std::scoped_lock lock(_mutex);
+    // Preset mode relies entirely on OBody's distribution — no self-distribution there.
+    if (_bodyMode == BodyMode::kOBodyPreset) { _fallbackWatch.clear(); return 0; }
+    int enqueued = 0;
+    for (auto it = _fallbackWatch.begin(); it != _fallbackWatch.end();) {
+        if (--(it->second) > 0) { ++it; continue; }   // still within the OBody grace window
+        const RE::FormID id = it->first;
+        if (!_processed.contains(id)) {
+            auto* actor = RE::TESForm::LookupByID<RE::Actor>(id);
+            if (actor && actor->Is3DLoaded() && !actor->IsDead() && !Config::IsActorExcluded(actor)) {
+                QueueForMorphs(actor);   // dedups vs the live queue; recursive_mutex makes this re-lock safe
+                ++enqueued;
+            }
+        }
+        it = _fallbackWatch.erase(it);
+    }
+    return enqueued;
 }
 
 void WeightManager::RegenerateActor(RE::Actor* a_actor) {

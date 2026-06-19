@@ -132,7 +132,7 @@ public:
     // Locked: cell-attach (loading thread) and Papyrus VM both touch these containers.
     bool HasProcessed(RE::FormID id) const  { std::scoped_lock l(_mutex); return _processed.contains(id); }
     void MarkProcessed(RE::FormID id)       { std::scoped_lock l(_mutex); _processed.insert(id); }
-    void ClearProcessed()                   { std::scoped_lock l(_mutex); _processed.clear(); _morphQueue.clear(); }
+    void ClearProcessed()                   { std::scoped_lock l(_mutex); _processed.clear(); _morphQueue.clear(); _fallbackWatch.clear(); }
 
     // One-shot flag: set before UpdateModelWeight(true), consumed by next OnActorGenerated.
     // Prevents the OBody re-fire loop without blocking future legitimate events.
@@ -149,6 +149,14 @@ public:
     void          QueueForMorphs(RE::Actor* a_actor);
     RE::Actor*    GetNextMorphActor();        // returns nullptr when queue is empty
     bool          HasMorphsPending() const   { return !_morphQueue.empty(); }
+
+    // Independent distribution (procedural fallback) — so procedural bodies work even with an EMPTY
+    // preset library (when OBody never fires OnActorGenerated), and for NPCs OBody's own distribution
+    // skips. The actor-load sink WATCHES each loaded NPC; SweepFallback (polled from Papyrus) gives
+    // OBody a short grace, then self-distributes any watched NPC OBody never handled. In OBody-preset
+    // mode this stays off (that mode relies on OBody's distribution). Returns how many were enqueued.
+    void          WatchForFallback(RE::FormID a_id);
+    int           SweepFallback();
 
     // Force re-generation for a specific actor (used by the re-generate hotkey).
     // Assigns a new random seed to this actor so the result differs from the default.
@@ -222,6 +230,9 @@ private:
     std::unordered_set<RE::FormID>                _morphsApplied;
     std::vector<RE::FormID>                       _morphQueue;
     std::unordered_map<RE::FormID, std::uint32_t> _overrideSeed;
+    std::unordered_map<RE::FormID, int>           _fallbackWatch;   // id -> grace ticks before self-distributing
+
+    static constexpr int kFallbackGraceTicks = 2;   // SweepFallback ticks (~2s each) to wait for OBody first
 
 public:
     static constexpr std::uint32_t kRecordUID  = 'OBWS';

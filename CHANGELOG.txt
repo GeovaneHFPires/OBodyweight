@@ -1,3 +1,14 @@
+Version 1.4.2
+
+- Procedural now works with an EMPTY preset library. Previously the automatic procedural pass only ran
+  after OBody distributed a preset (its "actor generated" event), so a setup with zero presets generated
+  no bodies until you used the re-roll hotkey. OBW now distributes procedurally on its own: when an NPC
+  loads in a Procedural mode, it gives OBody a brief moment to act and, if OBody never does (no presets,
+  or an NPC OBody's own distribution skips), applies the procedural body itself. No effect in OBody
+  Presets mode (that mode still relies on OBody's distribution), and excluded plugins / disabled sexes
+  are still respected.
+
+
 Version 1.4.1
 
 - Exclude NPCs by mod (MCM): a new "Exclusions" page lists every plugin that adds NPCs, each with a

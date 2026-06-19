@@ -1,13 +1,13 @@
-OBodyNG Weight — Nexus page copy.
+OBodyNG Weight - Nexus page copy.
 Each block below maps to a field in the Nexus editor. Paste the BBCode of each block
 into its matching field. If your page uses one big Description box instead, paste the
 whole thing minus the "====" header lines.
 
 
 ==================================================================
-SUMMARY  (short one-line field)
+SUMMARY
 ==================================================================
-Gives every NPC a unique body automatically — no BodySlide presets to collect. A whole town of different shapes, with physics that fit each body.
+Gives every NPC their own body, automatically - a whole world of different shapes, with no BodySlide presets to collect. Women and men, with physics that fits each body.
 
 
 ==================================================================
@@ -15,41 +15,76 @@ DESCRIPTION
 ==================================================================
 [size=6][b]OBodyNG Weight[/b][/size]
 
-[i]Every NPC gets their own body — automatically.[/i]
+[i]Every NPC gets their own body - automatically.[/i]
 
-Walk into a town and no two people share the same figure. Slim, curvy, athletic, petite, heavy — each NPC is built for you on the spot, [b]without collecting or sorting a single BodySlide preset[/b]. Their clothes fit the body too, and they keep the same look every time you meet them.
+In most setups, the people of Skyrim tend to share the same handful of figures. OBodyNG Weight changes that. It quietly gives every single NPC their own body as they appear, so a city actually feels like a city: tall and short, slim and curvy, athletic and soft, lean and heavy. You don't collect, sort, or assign anything - install it and the world simply fills with believable, varied people.
 
-It just works in the background. Install it, and the world fills with believable, varied bodies — men and women.
+Everyone keeps the same look each time you meet them, their clothes fit their body, and it all happens in the background. No menus to babysit, no setup per NPC.
+
+[b]Who it's for[/b]
+[list]
+[*]You want real body variety without spending hours collecting and assigning BodySlide presets.
+[*]You feel everyone in your game looks too similar - or like the same bombshell.
+[*]You want a natural crowd: mostly ordinary people, with the occasional striking figure - not a town of clones, and not nothing but pin-ups.
+[*]You want bodies AND physics that match, for women and men.
+[/list]
+
+[b]What it does, in plain terms[/b]
+As each person loads in, the mod builds a body that suits them and remembers it. Most people come out looking natural and average; a smaller number are clearly slim, curvy, athletic or heavy; and a rare few are genuinely striking. Even two people of the same body type now look noticeably different from each other - no more copy-paste crowds. How varied, how curvy, and how common the "striking" bodies are is all up to you in the menu.
+
+[b]Three ways to build bodies[/b] (pick one in the in-game menu)
+[list]
+[*][b]Procedural[/b] - recommended. Every body is built from scratch. The widest variety, and you need no presets at all.
+[*][b]OBody Presets[/b] - keeps using OBody's presets, but gives each NPC their own take on a preset, so people who share one no longer look identical.
+[*][b]Procedural Oriented[/b] - a blend: generated bodies nudged toward the style of your own presets.
+[/list]
+
+
+==================================================================
+HOW TO USE
+==================================================================
+[list=1]
+[*]Install it and load it after OBody NG. Pick a starting flavor in the installer (Realistic, Balanced, or Fantasy - you can change it later).
+[*]In game, open the [b]OBodyNG Weight[/b] menu (the mod menu / MCM) and choose a body mode. [b]Procedural[/b] is the easy default.
+[*]That's it. Walk around - NPCs get their bodies on their own.
+[/list]
+
+[b]Handy extras (all optional)[/b]
+[list]
+[*][b]Re-roll a body on the spot[/b] - aim at someone and press the re-roll key for a brand-new body for that person. Re-bindable; works in VR (it uses where you're looking).
+[*][b]Tune the look[/b] - simple sliders set how varied and how curvy bodies are, how common athletic or unusual figures are, and an overall heavier/leaner dial.
+[*][b]Women and men[/b] - turn each on or off independently, and make men slimmer or beefier to taste.
+[*][b]Leave certain mods alone[/b] - an Exclusions list shows every mod that adds NPCs, each with a checkbox. Tick a follower or custom-NPC mod and OBW won't touch its hand-made bodies. Your choices are remembered across all your saves.
+[*][b]Refresh everyone[/b] - one button re-applies bodies (and physics) to everyone around you after you change a setting, with no waiting or reloading.
+[*][b]Fresh start, kept tidy[/b] - want new faces to look different? The menu can hand new bodies to people you haven't met yet, while everyone you've already seen keeps exactly the body they had.
+[/list]
 
 
 ==================================================================
 MAIN FEATURES
 ==================================================================
 [list]
-[*][b]No preset library needed[/b] — you don't download, sort, or assign body presets. Every body is made automatically, for women and men.
-[*][b]Three ways to build bodies[/b] — fully procedural; or OBody's own presets but varied per NPC (no more identical twins sharing a preset); or a blend of the two. Switch in the menu.
-[*][b]15 body types[/b] — each woman is one recognisable shape: balanced, slim, rectangle, pear, top-heavy, hourglass, voluptuous, soft, BBW, athletic, athletic-curvy, obese, stocky, petite or amazon. Bust, waist, hips and tone all fit the type — not random parts thrown together.
-[*][b]Mostly natural, with variety[/b] — most people look average and believable; the striking bodies (tiny, huge, very curvy) are the exception, the way a real crowd looks. You're not surrounded by clones or by nothing but bombshells.
-[*][b]Physics that fit the body[/b] — with CBPC installed, each body moves to match: soft and heavy bodies jiggle more, toned and lean ones stay firm, and collision scales with size. Optional — without CBPC nothing changes.
-[*][b]Clothes follow the body[/b] — armor and outfits fit the generated shape, with no neck seams or body-vs-clothes mismatch.
-[*][b]Muscle tone[/b] — some women are athletic, with real definition, up to a rare super-fit "amazon". Men get tone from their build. A softer body smooths it away naturally.
-[*][b]Per-sex switches[/b] — turn female and male bodies on or off independently (let OBody/vanilla handle a sex), plus a slider to make men slimmer or beefier to taste.
-[*][b]Exclude any NPC mod[/b] — a checkbox list in the menu shows every mod that adds NPCs; tick the ones whose hand-made bodies you want left alone (followers, custom NPCs), and OBW won't touch them.
-[*][b]Re-roll hotkey[/b] — aim at anyone and press a key for a brand-new body on the spot (re-bindable). Works in VR (it uses where you're looking).
-[*][b]Refresh everyone[/b] — a one-click "Reprocess all loaded NPCs" button in the menu re-applies everything to the people around you after you change a setting — no waiting, no reloading.
-[*][b]Light and tidy[/b] — easy on performance, and it doesn't take up a load-order slot. Works on Skyrim SE, AE and VR.
+[*][b]No preset library needed[/b] - you don't download, sort, or assign body presets. Bodies are made for you, for women and men.
+[*][b]A whole world of shapes[/b] - a wide range of recognizable body types (slim, pear, hourglass, athletic, curvy, petite, heavy, and many more), each built so the proportions fit together - not random parts thrown on.
+[*][b]No two people the same[/b] - even within the same body type, people look clearly different from one another.
+[*][b]Natural by default, striking by exception[/b] - most folk look believable and average; the eye-catching bodies are the minority, the way a real crowd looks. Fully adjustable.
+[*][b]Physics that fit the body[/b] - with CBPC installed, soft and heavy bodies move more, toned and lean ones stay firm. Optional - without CBPC nothing changes.
+[*][b]Clothes follow the body[/b] - armor and outfits fit the shape, with no neck seams or body-vs-clothes mismatch.
+[*][b]Women and men[/b] - both supported, each can be switched on or off, plus a build dial for men.
+[*][b]Re-roll hotkey[/b] - a new body for anyone, instantly. Works in VR.
+[*][b]Exclude any NPC mod[/b] - a simple checkbox list keeps OBW off the followers and custom NPCs you'd rather leave as their authors made them.
+[*][b]Consistent and tidy[/b] - everyone keeps their look between visits; generating fresh bodies only affects people you haven't met yet.
+[*][b]Light and unobtrusive[/b] - easy on performance, takes no load-order slot. Works on Skyrim SE, AE and VR.
 [/list]
-
-[b]Settings menu (MCM):[/b] how varied or exaggerated bodies are, how common athletic / unusual bodies are, men on/off and male build, a re-bindable re-roll key, and a button to refresh everyone around you. A FOMOD installer offers Realistic / Balanced / Fantasy starting presets — all adjustable later.
 
 
 ==================================================================
-INSTALLATION INSTRUCTIONS
+INSTALLATION
 ==================================================================
 [list=1]
 [*]Install with a mod manager (MO2 / Vortex) and enable [b]OBodyNGWeight.esp[/b], loaded after OBody NG.
-[*]Pick a starting flavor in the installer — Realistic, Balanced, or Fantasy (you can change it anytime in the menu).
-[*]In-game, open the "OBodyNG Weight" menu and choose the [b]Procedural[/b] body mode.
+[*]Pick a starting flavor in the installer - Realistic, Balanced, or Fantasy (changeable anytime in the menu).
+[*]In game, open the "OBodyNG Weight" menu and choose the [b]Procedural[/b] body mode.
 [*]Recommended: in OBody's own menu, set its NPC-selection hotkey to [b]None[/b], so the re-roll key only triggers this mod.
 [/list]
 Make sure your CBBE / 3BA (female) and HIMBO (male) bodies are built in BodySlide with [b]"Build Morphs" checked[/b]. Build your armors with morphs too if you want clothing to follow the body.
@@ -65,17 +100,36 @@ REQUIREMENTS
 [*]RaceMenu
 [*]SkyUI (for the settings menu)
 [*]A [b]CBBE / CBBE 3BA[/b] female body and a [b]HIMBO[/b] male body, built in BodySlide with "Build Morphs" checked.
-[*][i]Optional:[/i] [b]CBPC[/b] — for the per-body physics. Without it, that part is simply skipped.
+[*][i]Optional:[/i] [b]CBPC[/b] - for the per-body physics. Without it, that part is simply skipped.
 [/list]
+
+
+==================================================================
+FAQ
+==================================================================
+[b]Do I need to collect BodySlide presets?[/b]
+No. In Procedural mode the mod builds every body itself. If you already love a preset collection, the other modes use it - just with per-NPC variety.
+
+[b]Will my followers / custom NPCs change?[/b]
+Only if you let them. Add their mod to the Exclusions list (a checkbox) and OBW leaves them exactly as their author made them.
+
+[b]Does it change an NPC's face or weight number?[/b]
+No. It only shapes the body, and it keeps faces and outfits matching - no neck seams.
+
+[b]Will the same NPC look different every time I see them?[/b]
+No - everyone keeps their body. You can deliberately re-roll one person with a hotkey, or hand fresh bodies to people you haven't met yet, but nobody changes behind your back.
+
+[b]Men too?[/b]
+Yes. Women and men are both supported and can be toggled independently.
 
 
 ==================================================================
 SHOUT OUTS
 ==================================================================
 [list]
-[*][b]OBody NG[/b] by Aietos — and the original [b]OBody[/b] by Sinhime. This mod is an add-on to OBody NG.
-[*][b]RaceMenu / SKEE[/b] by Expired — the body-morph system.
-[*][b]CBPC[/b] by Shizof — the physics.
+[*][b]OBody NG[/b] by Aietos - and the original [b]OBody[/b] by Sinhime. This mod is an add-on to OBody NG.
+[*][b]RaceMenu / SKEE[/b] by Expired - the body system it builds on.
+[*][b]CBPC[/b] by Shizof - the physics.
 [*][b]SKSE64[/b] by ianpatt, behippo, purplelunchbox and team.
 [*][b]Address Library[/b] by meh321.
 [*][b]CommonLibSSE-NG[/b] by CharmedBaryon (fork of CommonLibSSE by Ryan-rsm-McKenzie).
@@ -97,4 +151,4 @@ The download also includes the script sources.
 ==================================================================
 PERMISSIONS  (set to your preference on the Nexus page)
 ==================================================================
-Do not re-upload the packaged mod. Patches and translations are welcome — please link back here. The source is open on GitHub (link above); contributions welcome.
+Do not re-upload the packaged mod. Patches and translations are welcome - please link back here. The source is open on GitHub (link above); contributions welcome.
