@@ -1,3 +1,15 @@
+Version 1.4.3
+
+- Renamed the "OBody Presets" body mode to "OBody Sim Weight" - a clearer name for what it actually
+  does: it keeps OBody's preset SHAPE and only re-applies it at each NPC's simulated body weight, so
+  NPCs sharing a preset vary in size and fullness instead of looking identical. Same behaviour, new name.
+- Manual OBody assignments are now respected. When you apply a preset yourself through OBody's menu,
+  OBW no longer re-fits it - only OBody's AUTO-distributed presets get the simulated weight. This keeps
+  OBody's own on-demand features (anything that applies a preset to an actor on command) working as
+  intended. (As before, set Weight mode to "NPC Default" for plain OBody with no simulated weight.)
+- Clearer descriptions of the three body modes in the MCM and on the mod page.
+
+
 Version 1.4.2
 
 - Procedural now works with an EMPTY preset library. Previously the automatic procedural pass only ran

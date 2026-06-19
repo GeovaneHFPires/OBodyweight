@@ -137,25 +137,17 @@ Event OnUpdate()
         return
     endif
 
-    ; Idle: catch MANUAL preset assignments. OBody's preset menu (ApplyPresetByName) does NOT fire
-    ; OnActorGenerated, so we watch the crosshair target (where the OBody menu applies): if it has an
-    ; OBody preset assigned that we haven't supplanted yet (GetPresetAssignedToActor != "" is only
-    ; true between OBody assigning and us injecting+unassigning), inject it. Mode 1, non-passthrough.
-    if OBW_Native.GetBodyMode() == 1 && OBW_Native.GetMode() != 2
-        Actor target = Game.GetCurrentCrosshairRef() as Actor
-        if target && !OBW_Native.IsExcluded(target) && OBodyNative.GetPresetAssignedToActor(target) != ""
-            OBW_Native.QueueForMorphs(target)
-            RegisterForSingleUpdate(0.2)    ; drain it now
-            return
-        endif
-    endif
+    ; RESPECT MANUAL OBody assignments: when you apply a preset yourself through OBody's menu (or any
+    ; OBody feature that fires a preset on demand), OBW must NOT grab it - re-fitting it would break those
+    ; OBody features. So OBW Sim Weight only varies AUTO-distributed presets (which arrive via
+    ; OnActorGenerated); presets fired manually are left exactly as OBody applied them.
     ; Procedural fallback (independent distribution): self-distribute any loaded NPC OBody never handled,
-    ; so procedural bodies apply even with an EMPTY preset library. No-op in OBody-preset mode (gated in C++).
+    ; so procedural bodies apply even with an EMPTY preset library. No-op in OBody Sim Weight mode (gated in C++).
     if OBW_Native.SweepFallback() > 0
         RegisterForSingleUpdate(0.3)        ; drain the newly-enqueued NPCs now
         return
     endif
-    RegisterForSingleUpdate(2.0)            ; persistent light poll for manual preset assignments + fallback
+    RegisterForSingleUpdate(2.0)            ; persistent light poll for the procedural fallback
 EndEvent
 
 Function ApplyMorphs(Actor akActor)

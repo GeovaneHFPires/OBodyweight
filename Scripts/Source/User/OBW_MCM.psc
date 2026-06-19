@@ -38,7 +38,7 @@ Event OnConfigInit()
 
     _bodyLabels = new string[3]
     _bodyLabels[0] = "Procedural Morphs"
-    _bodyLabels[1] = "OBody Presets"
+    _bodyLabels[1] = "OBody Sim Weight"
     _bodyLabels[2] = "Procedural Oriented"
 EndEvent
 
@@ -70,7 +70,7 @@ Event OnPageReset(string page)
     bool male = OBW_Native.GetMaleBodies()
 
     ; Grey out what the current mode ignores, so only the relevant options are active.
-    ; Procedural distribution dials: procedural modes (0/2) only — OBody Presets (1) applies presets faithfully.
+    ; Procedural distribution dials: procedural modes (0/2) only — OBody Sim Weight (1) keeps the preset shape.
     int procFlag = OPTION_FLAG_DISABLED
     if gm != 1
         procFlag = OPTION_FLAG_NONE
@@ -326,9 +326,9 @@ EndEvent
 
 Event OnOptionHighlight(int option)
     if option == _modeOption
-        SetInfoText("Drives the mock weight (body size in procedural modes, preset interpolation in OBody mode).\nRandom: consistent within a session, new values each reload.\nSeeded: same NPC always gets the same weight this playthrough.\nNPC Default: uses the NPC's real weight. In OBody Presets mode this means plain OBody (no OBW weight re-application).")
+        SetInfoText("Drives the mock weight (body size in procedural modes, preset interpolation in OBody Sim Weight).\nRandom: consistent within a session, new values each reload.\nSeeded: same NPC always gets the same weight this playthrough.\nNPC Default: uses the NPC's real weight. In OBody Sim Weight mode this means plain OBody (no simulated weight applied).")
     elseif option == _bodyOption
-        SetInfoText("Procedural Morphs: fully generated bodies via SKEE; OBody presets ignored.\nOBody Presets: OBody picks the preset, then OBW re-applies it at each NPC's mock weight so NPCs sharing a preset VARY (and presets with no weight range get a synthesized lean<->full axis). Set 'Weight mode' to NPC Default for plain OBody instead.\nProcedural Oriented: generated bodies BLENDED toward each NPC's OBody preset (set the blend with 'Preset orientation').")
+        SetInfoText("Procedural Morphs: fully generated bodies via SKEE; OBody presets ignored.\nOBody Sim Weight: keeps OBody's preset SHAPE but re-applies it at each NPC's simulated weight, so NPCs sharing an auto-distributed preset VARY (presets with no weight range get a synthesized lean<->full axis). Presets you assign MANUALLY via OBody's menu are left untouched, so OBody's own features keep working. Set 'Weight mode' to NPC Default for plain OBody (no simulated weight at all).\nProcedural Oriented: generated bodies BLENDED toward each NPC's OBody preset (set the blend with 'Preset orientation').")
     elseif option == _femaleOption
         SetInfoText("Master switch for female NPCs. ON: women get OBW's procedural bodies. OFF: OBW ignores women entirely (no morphs) — OBody or vanilla handle them. Lets you run OBW for one sex only, or disable both. Applies to newly generated/re-rolled NPCs.")
     elseif option == _maleOption
@@ -350,7 +350,7 @@ Event OnOptionHighlight(int option)
     elseif option == _keyOption
         SetInfoText("Hotkey to re-roll the body of the NPC under your crosshair (Procedural mode). Default is the [ / { key. If it clashes with OBody, set OBody's selection hotkey to None.")
     elseif option == _biasOption
-        SetInfoText("Global heavier(+)/leaner(-) dial. Shifts the mock weight before clamping to [0-100], so it nudges body size everywhere: procedural frame size (modes Procedural / Oriented) and the OBody-preset interpolation (OBody Presets mode).")
+        SetInfoText("Global heavier(+)/leaner(-) dial. Shifts the mock weight before clamping to [0-100], so it nudges body size everywhere: procedural frame size (modes Procedural / Oriented) and the OBody-preset interpolation (OBody Sim Weight mode).")
     elseif option == _seedOption
         SetInfoText("Unique seed for this playthrough. Same seed = same weight distribution across sessions.")
     elseif option == _reseedOption

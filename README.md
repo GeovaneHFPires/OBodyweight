@@ -8,9 +8,13 @@ BodySlide preset library required, and equipped clothing follows the generated s
 
 - **Procedural body shapes** generated per NPC via SKEE morphs — no preset files needed.
   Women use CBBE 3BA sliders, men use HIMBO. Magnitudes calibrated to real BodySlide presets.
-- **Three body modes** — *Procedural* (fully generated), *OBody Presets* (OBody's own presets,
-  now varied per-NPC by a body weight so NPCs sharing a preset don't look identical), and
-  *Procedural Oriented* (generated, blended toward each NPC's OBody preset by an adjustable amount).
+- **Three body modes** — *Procedural* (every body generated from scratch, no presets needed);
+  *OBody Sim Weight* (keeps OBody's preset shape but re-applies each **auto-distributed** preset at
+  that NPC's simulated body weight, so NPCs sharing a preset differ in size/fullness instead of being
+  clones — and presets with no weight range get a synthesized lean↔full range; presets you assign
+  **manually** via OBody's menu are left untouched so OBody's own features keep working);
+  *Procedural Oriented* (start from a generated body, then blend it part-way toward that
+  NPC's OBody preset — a slider sets how far, 0% pure generated to 100% the preset itself).
 - **Body archetypes (women)** — each NPC gets one of 15 coherent body types: Balanced, Slim,
   Rectangle, Pear, Top-heavy, Hourglass, Voluptuous, Apple/Soft, BBW, Athletic, Athletic-curvy,
   Obese, Stocky, Petite, Amazon. The archetype drives bust/waist/hips/belly/tone together, so
@@ -44,7 +48,7 @@ BodySlide preset library required, and equipped clothing follows the generated s
 
 ## MCM
 
-Generation mode (Procedural Morphs / OBody Presets / Procedural Oriented), Weight mode
+Generation mode (Procedural Morphs / OBody Sim Weight / Procedural Oriented), Weight mode
 (Seeded / Random / NPC Default), **Bias** (global heavier/leaner), **Female bodies** /
 **Male bodies** toggles, **Male build**, **Morph intensity**, **Fantasy NPCs %**,
 **Unusual bodies %**, **Unusual breasts %**, **Athletic women %**, **Preset orientation**
@@ -73,9 +77,11 @@ re-bindable in the MCM) only triggers this mod.
 
 OBody (which has both female and male preset databases) fires its actor-generated event; this
 mod applies its own body morphs under key `OBW`, branching on sex. In **Procedural** mode it
-generates the shape directly. In **OBody Presets** mode it re-applies OBody's chosen preset at a
-per-NPC body weight (so NPCs sharing a preset vary, and weightless presets get a synthesized
-lean↔full range). **Procedural Oriented** blends the generated shape toward that preset.
+generates the shape directly. In **OBody Sim Weight** mode it re-applies OBody's **auto-distributed**
+preset at a per-NPC simulated body weight (so NPCs sharing a preset vary, and weightless presets get a
+synthesized lean↔full range) — presets you assign **manually** through OBody's menu are deliberately
+left untouched so OBody's own on-demand features keep working. **Procedural Oriented** blends the
+generated shape toward that preset.
 
 ## Compatibility
 
