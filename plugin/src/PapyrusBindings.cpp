@@ -130,6 +130,7 @@ std::int32_t GetMode(RE::StaticFunctionTag*) {
 }
 
 void SetMode(RE::StaticFunctionTag*, std::int32_t a_mode) {
+    if (a_mode < 0 || a_mode > 1) a_mode = 1;   // only Random(0)/Seeded(1) now; clamp stray values to Seeded
     WeightManager::GetSingleton().SetMode(static_cast<WeightMode>(a_mode));
 }
 
@@ -257,6 +258,14 @@ RE::BSFixedString GetArchetypeName(RE::StaticFunctionTag*, RE::Actor* a_actor) {
     return WeightManager::GetSingleton().GetArchetypeName(a_actor);
 }
 
+RE::BSFixedString GetButtShapeName(RE::StaticFunctionTag*, RE::Actor* a_actor) {
+    return WeightManager::GetSingleton().GetButtShapeName(a_actor);
+}
+
+RE::BSFixedString GetBreastShapeName(RE::StaticFunctionTag*, RE::Actor* a_actor) {
+    return WeightManager::GetSingleton().GetBreastShapeName(a_actor);
+}
+
 // CBPC ships cbp.dll — if it's loaded, the physics integration is safe to use.
 bool HasCBPC(RE::StaticFunctionTag*) {
     return GetModuleHandleA("cbp.dll") != nullptr;
@@ -305,6 +314,23 @@ float GetMaleMorphValue(RE::StaticFunctionTag*, RE::Actor* a_actor, RE::BSFixedS
 
 float GetMaleIntensity(RE::StaticFunctionTag*, RE::Actor* a_actor) {
     return WeightManager::GetSingleton().GetMaleIntensity(a_actor);
+}
+
+float GetMaleVolumeMorph(RE::StaticFunctionTag*, RE::Actor* a_actor, RE::BSFixedString a_name) {
+    const char* raw = a_name.c_str();
+    return WeightManager::GetSingleton().GetMaleVolumeMorph(a_actor, raw ? raw : "");
+}
+
+std::int32_t GetMaleArchetypeId(RE::StaticFunctionTag*, RE::Actor* a_actor) {
+    return WeightManager::GetSingleton().GetMaleArchetypeId(a_actor);
+}
+
+std::int32_t GetMalePhysicsPercent(RE::StaticFunctionTag*, RE::Actor* a_actor, std::int32_t a_kind) {
+    return WeightManager::GetSingleton().GetMalePhysicsPercent(a_actor, a_kind);
+}
+
+RE::BSFixedString GetMaleArchetypeName(RE::StaticFunctionTag*, RE::Actor* a_actor) {
+    return WeightManager::GetSingleton().GetMaleArchetypeName(a_actor);
 }
 
 void RegenerateActor(RE::StaticFunctionTag*, RE::Actor* a_actor) {
@@ -425,11 +451,17 @@ bool Register(RE::BSScript::IVirtualMachine* a_vm) {
     a_vm->RegisterFunction("GetPhysicsPercent",   kScript, GetPhysicsPercent);
     a_vm->RegisterFunction("GetArchetypeId",      kScript, GetArchetypeId);
     a_vm->RegisterFunction("GetArchetypeName",    kScript, GetArchetypeName);
+    a_vm->RegisterFunction("GetButtShapeName",    kScript, GetButtShapeName);
+    a_vm->RegisterFunction("GetBreastShapeName",  kScript, GetBreastShapeName);
     a_vm->RegisterFunction("HasCBPC",             kScript, HasCBPC);
     a_vm->RegisterFunction("GetFrameScore",       kScript, GetFrameScore);
     a_vm->RegisterFunction("GetMorphValue",       kScript, GetMorphValue);
     a_vm->RegisterFunction("GetMaleMorphValue",   kScript, GetMaleMorphValue);
     a_vm->RegisterFunction("GetMaleIntensity",    kScript, GetMaleIntensity);
+    a_vm->RegisterFunction("GetMaleVolumeMorph",  kScript, GetMaleVolumeMorph);
+    a_vm->RegisterFunction("GetMaleArchetypeId",  kScript, GetMaleArchetypeId);
+    a_vm->RegisterFunction("GetMaleArchetypeName",kScript, GetMaleArchetypeName);
+    a_vm->RegisterFunction("GetMalePhysicsPercent",kScript, GetMalePhysicsPercent);
     a_vm->RegisterFunction("RegenerateActor",     kScript, RegenerateActor);
     a_vm->RegisterFunction("GetToneScore",        kScript, GetToneScore);
     a_vm->RegisterFunction("IsVR",                kScript, IsVR);

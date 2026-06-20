@@ -52,11 +52,8 @@ Event OnKeyDown(int keyCode)
     if keyCode != _reRollKey
         return
     endif
-    ; Re-roll works in procedural (0/2) and weight-driven OBody mode (1 = re-roll the mock weight
-    ; -> the preset re-interpolates). Only skip pure OBody passthrough (mode 1 + Weight mode = NPC Default).
-    if OBW_Native.GetBodyMode() == 1 && OBW_Native.GetMode() == 2
-        return
-    endif
+    ; Re-roll works in every mode: procedural (0/2) re-rolls the body; OBody Sim Weight (1) re-rolls the
+    ; mock weight so the preset re-interpolates. (Plain OBody = assign manually via OBody; OBW won't touch it.)
     ; Pick the target: VR has no crosshair (GetCurrentCrosshairRef is None), so there we
     ; cone-cast from the HMD gaze in C++; desktop uses the normal crosshair (the cone-cast
     ; never runs there). Either way, fall back to the player if nothing is targeted.
@@ -83,10 +80,6 @@ Event OnActorGenerated(Actor akActor, string presetName)
     int gm = OBW_Native.GetBodyMode()
     ; Excluded plugins: never queue NPCs from an excluded .esp.
     if OBW_Native.IsExcluded(akActor)
-        return
-    endif
-    ; Mode 1 passthrough (Weight mode = NPC Default) -> leave the actor to OBody.
-    if gm == 1 && OBW_Native.GetMode() == 2
         return
     endif
     ; The HasMorphsApplied one-shot breaks the re-fire loop for the PROCEDURAL modes (0/2), which
@@ -226,10 +219,9 @@ Function ApplyMorphs(Actor akActor)
         NiOverride.UpdateModelWeight(akActor)
     endif
 
-    ; CBPC physics preset by archetype tier (soft dep — no-op without CBPC).
-    if isFemale
-        ApplyPhysicsTier(akActor)
-    endif
+    ; CBPC physics preset by archetype (soft dep — no-op without CBPC). Both sexes now (male pec/belly
+    ; jiggle scales with the male archetype: firm for Fit/Bodybuilder, soft for Dadbod/Heavyset).
+    ApplyPhysicsTier(akActor)
 EndFunction
 
 ; ── Body mode 1 (OBody Presets, weight-driven) ────────────────────────────────────────────
@@ -311,9 +303,15 @@ Function ApplyPhysicsTier(Actor akActor)
         return
     endif
     ; Continuous, body-correlated: bounce follows size + softness, collision follows size.
-    ; (Within one archetype a bigger body now jiggles more; muscle firms; fat softens.)
-    CBPCPluginScript.ApplyBounceInterpolation(akActor, "OBW", OBW_Native.GetPhysicsPercent(akActor, 0))
-    CBPCPluginScript.ApplyCollisionInterpolation(akActor, "OBW", OBW_Native.GetPhysicsPercent(akActor, 1))
+    ; (Within one archetype a bigger body now jiggles more; muscle firms; fat softens.) Same OBW config
+    ; bones serve males (Breast = pecs on the male skeleton); the male percent comes from the male archetype.
+    if akActor.GetActorBase().GetSex() == 1
+        CBPCPluginScript.ApplyBounceInterpolation(akActor, "OBW", OBW_Native.GetPhysicsPercent(akActor, 0))
+        CBPCPluginScript.ApplyCollisionInterpolation(akActor, "OBW", OBW_Native.GetPhysicsPercent(akActor, 1))
+    else
+        CBPCPluginScript.ApplyBounceInterpolation(akActor, "OBW", OBW_Native.GetMalePhysicsPercent(akActor, 0))
+        CBPCPluginScript.ApplyCollisionInterpolation(akActor, "OBW", OBW_Native.GetMalePhysicsPercent(akActor, 1))
+    endif
 EndFunction
 
 Function ApplyFemaleMorphs(Actor akActor)
@@ -325,6 +323,16 @@ Function ApplyFemaleMorphs(Actor akActor)
     ; Definition/trait sliders: master scale only — never the fantasy blow-up, so shape traits
     ; (waist, sag, hip dips...) stay anatomically plausible (always <= 1.0).
     float kDef = OBW_Native.GetMorphScale() / 100.0
+
+    ; DEBUG (gated by the MCM debug toggle): log the archetype + key generated values so we can SEE the
+    ; per-NPC variety (or lack of it) in the log. Cheap; no-op when debug logging is off.
+    OBW_Native.Log("F " + akActor.GetDisplayName() + " arch=" + OBW_Native.GetArchetypeName(akActor) \
+        + " fr=" + (T as int) \
+        + " br=" + (OBW_Native.GetMorphValue(akActor, T, "Breasts") as int) \
+        + " bt=" + (OBW_Native.GetMorphValue(akActor, T, "Butt") as int) \
+        + " hp=" + (OBW_Native.GetMorphValue(akActor, T, "Hips") as int) \
+        + " sh=" + (OBW_Native.GetMorphValue(akActor, T, "ShoulderWidth") as int) \
+        + " rear=" + OBW_Native.GetButtShapeName(akActor) + " bust=" + OBW_Native.GetBreastShapeName(akActor))
 
     ; --- Volume (frame score + traits, amplified for fantasy NPCs, soft-capped) ---
     NiOverride.SetBodyMorph(akActor, "Breasts", "OBW", OBW_Native.GetVolumeMorph(akActor, T, "Breasts"))
@@ -359,25 +367,70 @@ Function ApplyFemaleMorphs(Actor akActor)
     NiOverride.SetBodyMorph(akActor, "MuscleMoreAbs_v2",  "OBW", OBW_Native.GetMorphValue(akActor, T, "MuscleMoreAbs_v2")  * kDef)
     NiOverride.SetBodyMorph(akActor, "MuscleMoreArms_v2", "OBW", OBW_Native.GetMorphValue(akActor, T, "MuscleMoreArms_v2") * kDef)
     NiOverride.SetBodyMorph(akActor, "MuscleMoreLegs_v2", "OBW", OBW_Native.GetMorphValue(akActor, T, "MuscleMoreLegs_v2") * kDef)
+
+    ; --- NEW shape dimensions (more body types: shoulders, leg chain, butt shape, breast shape, waistline) ---
+    ; Volume (soft-capped): leg chain derived from thighs + a real belly only on heavy bodies.
+    NiOverride.SetBodyMorph(akActor, "CalfSize",             "OBW", OBW_Native.GetVolumeMorph(akActor, T, "CalfSize"))
+    NiOverride.SetBodyMorph(akActor, "ThighOutsideThicc_v2", "OBW", OBW_Native.GetVolumeMorph(akActor, T, "ThighOutsideThicc_v2"))
+    NiOverride.SetBodyMorph(akActor, "ThighFBThicc_v2",      "OBW", OBW_Native.GetVolumeMorph(akActor, T, "ThighFBThicc_v2"))
+    NiOverride.SetBodyMorph(akActor, "ChubbyLegs",           "OBW", OBW_Native.GetVolumeMorph(akActor, T, "ChubbyLegs"))
+    NiOverride.SetBodyMorph(akActor, "BigBelly",             "OBW", OBW_Native.GetVolumeMorph(akActor, T, "BigBelly"))
+    ; Shape (master scale only): silhouette + butt shape (heart/round/shelf/dimpled) + breast shape + waistline.
+    NiOverride.SetBodyMorph(akActor, "ShoulderWidth",   "OBW", OBW_Native.GetMorphValue(akActor, T, "ShoulderWidth")   * kDef)
+    NiOverride.SetBodyMorph(akActor, "RoundAss",        "OBW", OBW_Native.GetMorphValue(akActor, T, "RoundAss")        * kDef)
+    NiOverride.SetBodyMorph(akActor, "AppleCheeks",     "OBW", OBW_Native.GetMorphValue(akActor, T, "AppleCheeks")     * kDef)
+    NiOverride.SetBodyMorph(akActor, "ButtClassic",     "OBW", OBW_Native.GetMorphValue(akActor, T, "ButtClassic")     * kDef)
+    NiOverride.SetBodyMorph(akActor, "ButtShape2",      "OBW", OBW_Native.GetMorphValue(akActor, T, "ButtShape2")      * kDef)
+    NiOverride.SetBodyMorph(akActor, "ButtDimples",     "OBW", OBW_Native.GetMorphValue(akActor, T, "ButtDimples")     * kDef)
+    NiOverride.SetBodyMorph(akActor, "MuscleButt",      "OBW", OBW_Native.GetMorphValue(akActor, T, "MuscleButt")      * kDef)
+    NiOverride.SetBodyMorph(akActor, "BreastsTogether", "OBW", OBW_Native.GetMorphValue(akActor, T, "BreastsTogether") * kDef)
+    NiOverride.SetBodyMorph(akActor, "BreastCleavage",  "OBW", OBW_Native.GetMorphValue(akActor, T, "BreastCleavage")  * kDef)
+    NiOverride.SetBodyMorph(akActor, "BreastHeight",    "OBW", OBW_Native.GetMorphValue(akActor, T, "BreastHeight")    * kDef)
+    NiOverride.SetBodyMorph(akActor, "WideWaistLine",   "OBW", OBW_Native.GetMorphValue(akActor, T, "WideWaistLine")   * kDef)
+    NiOverride.SetBodyMorph(akActor, "ChubbyWaist",     "OBW", OBW_Native.GetMorphValue(akActor, T, "ChubbyWaist")     * kDef)
+
+    ; --- FINE shapes: torso breadth, ribs (lean only), hip projection, leg shape, breast shape ---
+    NiOverride.SetBodyMorph(akActor, "BigTorso",        "OBW", OBW_Native.GetMorphValue(akActor, T, "BigTorso")        * kDef)
+    NiOverride.SetBodyMorph(akActor, "ChestWidth",      "OBW", OBW_Native.GetMorphValue(akActor, T, "ChestWidth")      * kDef)
+    NiOverride.SetBodyMorph(akActor, "RibsProminance",  "OBW", OBW_Native.GetMorphValue(akActor, T, "RibsProminance")  * kDef)
+    NiOverride.SetBodyMorph(akActor, "HipForward",      "OBW", OBW_Native.GetMorphValue(akActor, T, "HipForward")      * kDef)
+    NiOverride.SetBodyMorph(akActor, "LegShapeClassic", "OBW", OBW_Native.GetMorphValue(akActor, T, "LegShapeClassic") * kDef)
+    NiOverride.SetBodyMorph(akActor, "BreastTopSlope",  "OBW", OBW_Native.GetMorphValue(akActor, T, "BreastTopSlope")  * kDef)
+    NiOverride.SetBodyMorph(akActor, "BreastSideShape", "OBW", OBW_Native.GetMorphValue(akActor, T, "BreastSideShape") * kDef)
 EndFunction
 
 Function ApplyMaleMorphs(Actor akActor)
-    ; Mirrors the female split: volume sliders use per-NPC intensity (realistic/fantasy/
-    ; unusual); definition/shape sliders use the master scale only.
-    float kVol = OBW_Native.GetMaleIntensity(akActor) / 100.0
+    ; Mirrors the female split: volume sliders use GetMaleVolumeMorph (intensity + HIMBO soft-cap, so a
+    ; bodybuilder never breaks the mesh); definition/shape sliders use the master scale only.
     float kDef = OBW_Native.GetMorphScale() / 100.0
 
-    ; --- Volume (build: muscle/fat/mass; amplified for fantasy/huge) ---
-    NiOverride.SetBodyMorph(akActor, "Muscle",     "OBW", OBW_Native.GetMaleMorphValue(akActor, "Muscle")     * kVol)
-    NiOverride.SetBodyMorph(akActor, "BodyMass",   "OBW", OBW_Native.GetMaleMorphValue(akActor, "BodyMass")   * kVol)
-    NiOverride.SetBodyMorph(akActor, "PecsSize",   "OBW", OBW_Native.GetMaleMorphValue(akActor, "PecsSize")   * kVol)
-    NiOverride.SetBodyMorph(akActor, "ArmsBiceps", "OBW", OBW_Native.GetMaleMorphValue(akActor, "ArmsBiceps") * kVol)
-    NiOverride.SetBodyMorph(akActor, "Chubby",     "OBW", OBW_Native.GetMaleMorphValue(akActor, "Chubby")     * kVol)
-    NiOverride.SetBodyMorph(akActor, "TorsoBelly", "OBW", OBW_Native.GetMaleMorphValue(akActor, "TorsoBelly") * kVol)
-    NiOverride.SetBodyMorph(akActor, "LegsSize",   "OBW", OBW_Native.GetMaleMorphValue(akActor, "LegsSize")   * kVol)
-    NiOverride.SetBodyMorph(akActor, "ButtBooty",  "OBW", OBW_Native.GetMaleMorphValue(akActor, "ButtBooty")  * kVol)
+    ; DEBUG (gated by the MCM debug toggle): male archetype + key build values.
+    OBW_Native.Log("M " + akActor.GetDisplayName() + " arch=" + OBW_Native.GetMaleArchetypeName(akActor) \
+        + " mus=" + (OBW_Native.GetMaleMorphValue(akActor, "Muscle") as int) \
+        + " mass=" + (OBW_Native.GetMaleMorphValue(akActor, "BodyMass") as int) \
+        + " belly=" + (OBW_Native.GetMaleMorphValue(akActor, "TorsoBelly") as int) \
+        + " shld=" + (OBW_Native.GetMaleMorphValue(akActor, "TorsoShoulderInc") as int))
 
-    ; --- Definition / shape traits (master scale only) ---
+    ; --- Volume (build: muscle/fat/mass; archetype-biased; soft-capped) ---
+    NiOverride.SetBodyMorph(akActor, "Muscle",      "OBW", OBW_Native.GetMaleVolumeMorph(akActor, "Muscle"))
+    NiOverride.SetBodyMorph(akActor, "BodyMass",    "OBW", OBW_Native.GetMaleVolumeMorph(akActor, "BodyMass"))
+    NiOverride.SetBodyMorph(akActor, "PecsSize",    "OBW", OBW_Native.GetMaleVolumeMorph(akActor, "PecsSize"))
+    NiOverride.SetBodyMorph(akActor, "PecsWidth",   "OBW", OBW_Native.GetMaleVolumeMorph(akActor, "PecsWidth"))
+    NiOverride.SetBodyMorph(akActor, "ArmsBiceps",  "OBW", OBW_Native.GetMaleVolumeMorph(akActor, "ArmsBiceps"))
+    NiOverride.SetBodyMorph(akActor, "ArmsShoulders","OBW", OBW_Native.GetMaleVolumeMorph(akActor, "ArmsShoulders"))
+    NiOverride.SetBodyMorph(akActor, "ArmsTraps",   "OBW", OBW_Native.GetMaleVolumeMorph(akActor, "ArmsTraps"))
+    NiOverride.SetBodyMorph(akActor, "ArmsFore",    "OBW", OBW_Native.GetMaleVolumeMorph(akActor, "ArmsFore"))
+    NiOverride.SetBodyMorph(akActor, "TorsoBackSize","OBW", OBW_Native.GetMaleVolumeMorph(akActor, "TorsoBackSize"))
+    NiOverride.SetBodyMorph(akActor, "Chubby",      "OBW", OBW_Native.GetMaleVolumeMorph(akActor, "Chubby"))
+    NiOverride.SetBodyMorph(akActor, "TorsoBelly",  "OBW", OBW_Native.GetMaleVolumeMorph(akActor, "TorsoBelly"))
+    NiOverride.SetBodyMorph(akActor, "TorsoBellyLHandles","OBW", OBW_Native.GetMaleVolumeMorph(akActor, "TorsoBellyLHandles"))
+    NiOverride.SetBodyMorph(akActor, "LegsSize",    "OBW", OBW_Native.GetMaleVolumeMorph(akActor, "LegsSize"))
+    NiOverride.SetBodyMorph(akActor, "LegsThigh",   "OBW", OBW_Native.GetMaleVolumeMorph(akActor, "LegsThigh"))
+    NiOverride.SetBodyMorph(akActor, "LegsCalfSize","OBW", OBW_Native.GetMaleVolumeMorph(akActor, "LegsCalfSize"))
+    NiOverride.SetBodyMorph(akActor, "ButtBooty",   "OBW", OBW_Native.GetMaleVolumeMorph(akActor, "ButtBooty"))
+    NiOverride.SetBodyMorph(akActor, "ButtRoundy",  "OBW", OBW_Native.GetMaleVolumeMorph(akActor, "ButtRoundy"))
+
+    ; --- Definition / shape (master scale only): V-taper, abs/back cuts, lean ---
     NiOverride.SetBodyMorph(akActor, "Lean",             "OBW", OBW_Native.GetMaleMorphValue(akActor, "Lean")             * kDef)
     NiOverride.SetBodyMorph(akActor, "PecsFlatten",      "OBW", OBW_Native.GetMaleMorphValue(akActor, "PecsFlatten")      * kDef)
     NiOverride.SetBodyMorph(akActor, "TorsoShoulderInc", "OBW", OBW_Native.GetMaleMorphValue(akActor, "TorsoShoulderInc") * kDef)
@@ -386,6 +439,8 @@ Function ApplyMaleMorphs(Actor akActor)
     NiOverride.SetBodyMorph(akActor, "TorsoFlatAbs",     "OBW", OBW_Native.GetMaleMorphValue(akActor, "TorsoFlatAbs")     * kDef)
     NiOverride.SetBodyMorph(akActor, "TorsoVLine",       "OBW", OBW_Native.GetMaleMorphValue(akActor, "TorsoVLine")       * kDef)
     NiOverride.SetBodyMorph(akActor, "TorsoRibsDefinition", "OBW", OBW_Native.GetMaleMorphValue(akActor, "TorsoRibsDefinition") * kDef)
+    NiOverride.SetBodyMorph(akActor, "TorsoBackShape",     "OBW", OBW_Native.GetMaleMorphValue(akActor, "TorsoBackShape")     * kDef)
+    NiOverride.SetBodyMorph(akActor, "TorsoBackDefinition","OBW", OBW_Native.GetMaleMorphValue(akActor, "TorsoBackDefinition") * kDef)
     NiOverride.SetBodyMorph(akActor, "ArmsTrapsValleys",   "OBW", OBW_Native.GetMaleMorphValue(akActor, "ArmsTrapsValleys")   * kDef)
     NiOverride.SetBodyMorph(akActor, "LegsThinner",      "OBW", OBW_Native.GetMaleMorphValue(akActor, "LegsThinner")      * kDef)
 EndFunction
@@ -414,7 +469,7 @@ Function BlendWithPreset(Actor akActor, float orient, bool isFemale)
 EndFunction
 
 string[] Function FemaleSliders()
-    string[] s = new string[25]
+    string[] s = new string[49]
     s[0]  = "Breasts"
     s[1]  = "Butt"
     s[2]  = "Belly"
@@ -440,11 +495,35 @@ string[] Function FemaleSliders()
     s[22] = "MuscleMoreAbs_v2"
     s[23] = "MuscleMoreArms_v2"
     s[24] = "MuscleMoreLegs_v2"
+    s[25] = "CalfSize"
+    s[26] = "ThighOutsideThicc_v2"
+    s[27] = "ThighFBThicc_v2"
+    s[28] = "ChubbyLegs"
+    s[29] = "BigBelly"
+    s[30] = "ShoulderWidth"
+    s[31] = "RoundAss"
+    s[32] = "AppleCheeks"
+    s[33] = "ButtClassic"
+    s[34] = "ButtShape2"
+    s[35] = "ButtDimples"
+    s[36] = "MuscleButt"
+    s[37] = "BreastsTogether"
+    s[38] = "BreastCleavage"
+    s[39] = "BreastHeight"
+    s[40] = "WideWaistLine"
+    s[41] = "ChubbyWaist"
+    s[42] = "BigTorso"
+    s[43] = "ChestWidth"
+    s[44] = "RibsProminance"
+    s[45] = "HipForward"
+    s[46] = "LegShapeClassic"
+    s[47] = "BreastTopSlope"
+    s[48] = "BreastSideShape"
     return s
 EndFunction
 
 string[] Function MaleSliders()
-    string[] s = new string[18]
+    string[] s = new string[29]
     s[0]  = "Muscle"
     s[1]  = "BodyMass"
     s[2]  = "PecsSize"
@@ -463,5 +542,16 @@ string[] Function MaleSliders()
     s[15] = "TorsoRibsDefinition"
     s[16] = "ArmsTrapsValleys"
     s[17] = "LegsThinner"
+    s[18] = "PecsWidth"
+    s[19] = "ArmsShoulders"
+    s[20] = "ArmsTraps"
+    s[21] = "ArmsFore"
+    s[22] = "TorsoBackSize"
+    s[23] = "TorsoBellyLHandles"
+    s[24] = "LegsThigh"
+    s[25] = "LegsCalfSize"
+    s[26] = "ButtRoundy"
+    s[27] = "TorsoBackShape"
+    s[28] = "TorsoBackDefinition"
     return s
 EndFunction

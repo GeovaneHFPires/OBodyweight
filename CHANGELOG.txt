@@ -1,3 +1,23 @@
+Version 1.4.4
+
+- MANY more female body types. Added 9 archetypes (Inverted Triangle, Diamond, Spoon, MILF, Slim Thick,
+  Bottom Hourglass, Top Hourglass, Lollipop, Strongwoman) for 24 total, plus a new SHOULDER/silhouette
+  axis so pear (narrow shoulders) vs inverted-triangle (broad) read distinctly. Finer shape sliders are
+  now generated too (calves, torso/ribs, hip projection, breast height/cleavage, waistline...).
+- Fine SHAPE traits. A rear can be heart / round / shelf / dimpled; a bust round / teardrop / wide-set /
+  east-west. Each NPC may roll one of each (~30%), all derived so they stay coherent (no spikes).
+- MEN now have body types too. 12 male archetypes (Lean, Fit, Swimmer, Soldier, Dadbod, Heavyset, Stocky,
+  Lanky, Twink, Bodybuilder, Powerlifter, Average) + finer HIMBO shapes (shoulders, back, traps, forearms,
+  calves, love handles, glutes). A differentiation pass gives men real per-region variety (far fewer
+  look-alikes) and a wider lean->huge range, with a tight soft-cap so big builds never break the HIMBO mesh.
+- CBPC physics now applies to MEN too (pec/belly jiggle scaled by build - firm for fit, soft for dadbod).
+- Renamed body mode "OBody Presets" -> "OBody Sim Weight" (it always re-fits the preset at a per-NPC weight;
+  it is NOT plain OBody). For plain OBody, just assign a preset MANUALLY through OBody's menu - OBW leaves
+  manual choices untouched. Removed the confusing "NPC Default" weight mode (Weight mode = Random / Seeded).
+- "Reprocess all loaded" is now mode-aware: RANDOM re-rolls every body (fresh looks each click); SEEDED
+  keeps each body (just picks up changed settings/physics).
+
+
 Version 1.4.3
 
 - Renamed the "OBody Presets" body mode to "OBody Sim Weight" - a clearer name for what it actually

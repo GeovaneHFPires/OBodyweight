@@ -119,10 +119,17 @@ float Function GetMorphValue(Actor akActor, float afFrameScore, string morphName
 ; to the sculpted vertex range (no spikes/breaks). Apply directly (do NOT multiply by kVol).
 float Function GetVolumeMorph(Actor akActor, float afFrameScore, string morphName) global native
 
-; Male morphs (HIMBO). Derived from build (muscle+fat) + traits + unusual.
+; Male morphs (HIMBO). Derived from build (muscle+fat) + archetype + traits + unusual.
 float Function GetMaleMorphValue(Actor akActor, string morphName) global native
 ; Per-NPC male intensity (realistic/fantasy/unusual). For volume sliders.
 float Function GetMaleIntensity(Actor akActor) global native
+; Male VOLUME morph: GetMaleMorphValue * intensity, SOFT-CAPPED for HIMBO (no mesh break). Apply directly.
+float Function GetMaleVolumeMorph(Actor akActor, string morphName) global native
+; Male body archetype (HIMBO body types: Lean/Fit/Dadbod/Bodybuilder/Heavyset/Stocky...). Id 0-11 (-1 none).
+int Function GetMaleArchetypeId(Actor akActor) global native
+string Function GetMaleArchetypeName(Actor akActor) global native
+; CBPC bounce(0)/collision(1) % for a male, from his archetype (firm Fit/Bodybuilder, soft Dadbod/Heavyset).
+int Function GetMalePhysicsPercent(Actor akActor, int aiKind) global native
 
 ; Muscle tone 0-100 (same value that drives the MuscleAbs/Arms/Legs sliders).
 int Function GetToneScore(Actor akActor) global native
@@ -133,6 +140,11 @@ int Function GetPhysicsTier(Actor akActor) global native
 ; Continuous physics % (0-100) that correlates with the real body (frame size + archetype softness).
 ; kind 0 = bounce, 1 = collision. ~32 = neutral. Used with ApplyBounce/CollisionInterpolation.
 int Function GetPhysicsPercent(Actor akActor, int aiKind) global native
+
+; Notable fine shapes (female): butt shape (heart/round/shelf/dimpled) + breast shape
+; (round/teardrop/eastwest/wideset), or "" if none. Public body API for other mods.
+string Function GetButtShapeName(Actor akActor) global native
+string Function GetBreastShapeName(Actor akActor) global native
 
 ; Public body-type API: the NPC's full archetype (15 types, vs the 5 physics tiers).
 ; Id 0-14 (-1 none); name e.g. "Pear","BBW","Hourglass". For other mods.

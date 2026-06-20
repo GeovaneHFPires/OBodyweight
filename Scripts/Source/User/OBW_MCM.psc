@@ -31,10 +31,9 @@ Event OnConfigInit()
     Pages[0] = "Settings"
     Pages[1] = "Exclusions"
 
-    _modeLabels = new string[3]
+    _modeLabels = new string[2]
     _modeLabels[0] = "Random"
     _modeLabels[1] = "Seeded (Deterministic)"
-    _modeLabels[2] = "NPC Default (disabled)"
 
     _bodyLabels = new string[3]
     _bodyLabels[0] = "Procedural Morphs"
@@ -65,7 +64,7 @@ Event OnPageReset(string page)
     SetCursorFillMode(TOP_TO_BOTTOM)
 
     int gm = OBW_Native.GetBodyMode()    ; 0 Procedural, 1 OBody Presets, 2 Procedural Oriented
-    int wm = OBW_Native.GetMode()        ; 0 Random, 1 Seeded, 2 NPC Default
+    int wm = OBW_Native.GetMode()        ; 0 Random, 1 Seeded
     bool fem = OBW_Native.GetFemaleBodies()
     bool male = OBW_Native.GetMaleBodies()
 
@@ -326,9 +325,9 @@ EndEvent
 
 Event OnOptionHighlight(int option)
     if option == _modeOption
-        SetInfoText("Drives the mock weight (body size in procedural modes, preset interpolation in OBody Sim Weight).\nRandom: consistent within a session, new values each reload.\nSeeded: same NPC always gets the same weight this playthrough.\nNPC Default: uses the NPC's real weight. In OBody Sim Weight mode this means plain OBody (no simulated weight applied).")
+        SetInfoText("How the per-NPC simulated weight is seeded (drives the preset interpolation in OBody Sim Weight; procedural body sizing has its own seed).\nRandom: re-rolled every session - bodies differ each reload.\nSeeded: fixed for this playthrough - the same NPC always looks the same.\n(For PLAIN OBody on a specific NPC, just assign her preset MANUALLY through OBody's menu - OBW leaves manual assignments untouched.)")
     elseif option == _bodyOption
-        SetInfoText("Procedural Morphs: fully generated bodies via SKEE; OBody presets ignored.\nOBody Sim Weight: keeps OBody's preset SHAPE but re-applies it at each NPC's simulated weight, so NPCs sharing an auto-distributed preset VARY (presets with no weight range get a synthesized lean<->full axis). Presets you assign MANUALLY via OBody's menu are left untouched, so OBody's own features keep working. Set 'Weight mode' to NPC Default for plain OBody (no simulated weight at all).\nProcedural Oriented: generated bodies BLENDED toward each NPC's OBody preset (set the blend with 'Preset orientation').")
+        SetInfoText("Procedural Morphs: fully generated bodies via SKEE; OBody presets ignored.\nOBody Sim Weight: OBody picks the preset, then OBW RE-APPLIES it INTERPOLATED at each NPC's weight - so NPCs sharing a preset differ in fullness instead of being clones (presets with no weight range get a synthesized lean<->full axis). It always re-fits the preset - this is NOT plain OBody. (For plain OBody, assign the preset MANUALLY via OBody's menu - OBW leaves manual assignments untouched.)\nProcedural Oriented: generated bodies BLENDED toward each NPC's OBody preset (set the blend with 'Preset orientation').")
     elseif option == _femaleOption
         SetInfoText("Master switch for female NPCs. ON: women get OBW's procedural bodies. OFF: OBW ignores women entirely (no morphs) — OBody or vanilla handle them. Lets you run OBW for one sex only, or disable both. Applies to newly generated/re-rolled NPCs.")
     elseif option == _maleOption
@@ -358,7 +357,7 @@ Event OnOptionHighlight(int option)
     elseif option == _debugOption
         SetInfoText("Writes detailed per-NPC diagnostics to OBodyNGWeight.log (preset applied, load/poll events). OFF by default. Turn it ON only when troubleshooting — it bloats the log in crowded areas. Warnings and errors are always logged.")
     elseif option == _reprocessOption
-        SetInfoText("Re-applies the current generation + physics to every NPC loaded around you, without waiting for cell reloads. Handy after changing settings.")
+        SetInfoText("Re-applies bodies to every NPC loaded around you, without waiting for cell reloads. In RANDOM weight mode it RE-ROLLS them (fresh bodies each click); in SEEDED mode it keeps each body (same seed - just picks up changed settings/physics).")
     elseif _exclPlugins
         SetInfoText("Check to EXCLUDE NPCs from this plugin: OBW leaves them to OBody / vanilla / the source mod (no procedural body, no preset re-application). Saved globally across saves. Applies to newly generated NPCs (use Reprocess, or it takes hold as NPCs load).")
     endif

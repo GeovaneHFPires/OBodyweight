@@ -10,9 +10,10 @@
 namespace OBW {
 
 enum class WeightMode : std::uint8_t {
-    kRandom     = 0,
-    kSeeded     = 1,
-    kNpcDefault = 2,
+    kRandom     = 0,   // simulated per-NPC weight, re-rolled each session
+    kSeeded     = 1,   // simulated per-NPC weight, fixed this playthrough
+    // (kNpcDefault removed 2026-06-19: "use real weight" was a no-op in procedural and a plain-OBody
+    //  passthrough in Sim Weight - confusing. Saved value 2 migrates to kSeeded on load.)
 };
 
 enum class BodyMode : std::uint8_t {
@@ -32,8 +33,8 @@ public:
 
     // Per-INSTANCE mock weight (0-100) for body mode 1 (OBody preset interpolation): seeded by
     // the ACTOR formID (so generic NPCs sharing a base still vary) + Bias, honoring Random vs
-    // Seeded via the session seed. NpcDefault returns the actor's real weight (+Bias). This is
-    // what drives PresetManager's lerp between each preset slider's small/big values.
+    // Seeded via the session seed. This is what drives PresetManager's lerp between each preset
+    // slider's small/big values. (Plain OBody = assign the preset MANUALLY via OBody's menu; OBW leaves it.)
     float GetPresetWeight(RE::Actor* a_actor);
 
     // Procedural morph generation — no preset files required.
@@ -52,6 +53,13 @@ public:
     float GetMaleMorphValue(RE::Actor* a_actor, std::string_view morphName);
     // Per-NPC male intensity: realistic (~1.0) or fantasy (1.3-2.0), or unusual extreme.
     float GetMaleIntensity(RE::Actor* a_actor);
+    // Male volume morph: GetMaleMorphValue * intensity, SOFT-CAPPED for HIMBO (no mesh break).
+    float GetMaleVolumeMorph(RE::Actor* a_actor, std::string_view morphName);
+    // Male body archetype (HIMBO body types: Lean, Fit, Dadbod, Bodybuilder, Heavyset...).
+    int         GetMaleArchetypeId(RE::Actor* a_actor);
+    std::string GetMaleArchetypeName(RE::Actor* a_actor);
+    // CBPC physics % for a male (kind 0 bounce / 1 collision), from the male archetype softness.
+    int         GetMalePhysicsPercent(RE::Actor* a_actor, int a_kind);
 
     // Configuration
     WeightMode    GetMode() const noexcept      { return _mode; }
@@ -127,6 +135,10 @@ public:
     // physics tiers. Deterministic per NPC + seed (same as the morphs they got).
     int         GetArchetypeId(RE::Actor* a_actor);
     std::string GetArchetypeName(RE::Actor* a_actor);
+    // Notable fine shapes (female): butt shape (heart/round/shelf/dimpled) + breast shape
+    // (round/teardrop/eastwest/wideset), or "" if none. Public body API for other mods.
+    std::string GetButtShapeName(RE::Actor* a_actor);
+    std::string GetBreastShapeName(RE::Actor* a_actor);
 
     // Per-session processed set — prevents re-applying weight on every cell crossing.
     // Locked: cell-attach (loading thread) and Papyrus VM both touch these containers.

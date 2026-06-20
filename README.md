@@ -49,7 +49,7 @@ BodySlide preset library required, and equipped clothing follows the generated s
 ## MCM
 
 Generation mode (Procedural Morphs / OBody Sim Weight / Procedural Oriented), Weight mode
-(Seeded / Random / NPC Default), **Bias** (global heavier/leaner), **Female bodies** /
+(Random / Seeded), **Bias** (global heavier/leaner), **Female bodies** /
 **Male bodies** toggles, **Male build**, **Morph intensity**, **Fantasy NPCs %**,
 **Unusual bodies %**, **Unusual breasts %**, **Athletic women %**, **Preset orientation**
 (Oriented mode), Seed, a re-bindable **Re-roll key**, and a **Debug logging** toggle. Options

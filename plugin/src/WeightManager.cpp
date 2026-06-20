@@ -34,28 +34,12 @@ float WeightManager::GenerateWeight(RE::Actor* a_actor) {
     if (!a_actor) return 50.0f;
     std::scoped_lock lock(_mutex);
 
-    float raw = 50.0f;
-
-    switch (_mode) {
-    case WeightMode::kNpcDefault:
-        if (auto* base = a_actor->GetActorBase())
-            raw = base->GetWeight();
-        break;
-
-    case WeightMode::kRandom:
-    case WeightMode::kSeeded: {
-        // Weight lives on the ActorBase (per-base in the engine). Seed by the BASE
-        // formID so every instance of a shared base computes the SAME weight —
-        // avoids the "last instance processed overwrites the others" inconsistency.
-        RE::FormID seedId = a_actor->GetFormID();
-        if (auto* base = a_actor->GetActorBase()) seedId = base->GetFormID();
-        std::mt19937 rng{ GetActorSeed(seedId) };
-        std::uniform_real_distribution<float> dist(0.0f, 100.0f);
-        raw = dist(rng);
-        break;
-    }
-    }
-
+    // Random and Seeded both draw a simulated weight (Random vs Seeded differ only in whether _seed
+    // is regenerated each load). Per-BASE seed so all instances of a shared base agree.
+    RE::FormID seedId = a_actor->GetFormID();
+    if (auto* base = a_actor->GetActorBase()) seedId = base->GetFormID();
+    std::mt19937 rng{ GetActorSeed(seedId) };
+    const float raw = std::uniform_real_distribution<float>(0.0f, 100.0f)(rng);
     return std::clamp(raw + _bias, 0.0f, 100.0f);
 }
 
@@ -63,11 +47,6 @@ float WeightManager::GetPresetWeight(RE::Actor* a_actor) {
     if (!a_actor) return 50.0f;
     std::scoped_lock lock(_mutex);
 
-    if (_mode == WeightMode::kNpcDefault) {
-        float w = 50.0f;
-        if (auto* base = a_actor->GetActorBase()) w = base->GetWeight();
-        return std::clamp(w + _bias, 0.0f, 100.0f);
-    }
     // Per-INSTANCE seed (actor formID, not base) so NPCs that share a base still get distinct
     // weights -> distinct preset interpolation. Random vs Seeded comes from _seed (see Load()).
     std::mt19937 rng{ GetActorSeed(a_actor->GetFormID()) ^ 0x7E16E700u };
@@ -166,6 +145,23 @@ static const std::vector<TCat> kTraitCategories{
         { "thick", { { "thighs", 38.0f }, { "thighinsidethicc_v2", 35.0f }, { "arms", 10.0f }, { "forearmsize", 6.0f } } },
         { "gap",   { { "slimthighs", 55.0f }, { "thighs", -20.0f }, { "arms", -10.0f }, { "forearmsize", -6.0f } } },
     } },
+    // Butt SHAPE (independent of size, ~30% get a pronounced one): heart (full low + round),
+    // round (bubble), shelf (athletic high/squared), dimpled (soft). Drives the dedicated 3BA
+    // butt-shape sliders (applecheeks/buttclassic/buttshape2/buttdimples) + roundass.
+    { 0x0B077B22u, 0.30f, {
+        { "heart",   { { "applecheeks", 55.0f }, { "roundass", 35.0f } } },
+        { "round",   { { "roundass", 48.0f }, { "buttclassic", 25.0f } } },
+        { "shelf",   { { "buttshape2", 45.0f }, { "buttclassic", 22.0f } } },
+        { "dimpled", { { "buttdimples", 50.0f }, { "roundass", 18.0f } } },
+    } },
+    // Breast SHAPE (independent of size, ~30%): round (full upper pole), teardrop (natural, less top),
+    // east-west (point outward), wide-set (separated). Drives breasttopslope/breastsideshape/breastwidth.
+    { 0x0B5EA522u, 0.30f, {
+        { "round",    { { "breasttopslope", 48.0f } } },
+        { "teardrop", { { "breasttopslope", -22.0f } } },
+        { "eastwest", { { "breastsideshape", 45.0f }, { "breastwidth", 25.0f } } },
+        { "wideset",  { { "breastwidth", 50.0f } } },
+    } },
 };
 
 // Male trait categories (HIMBO). Female-equivalent regions where they make sense:
@@ -191,6 +187,20 @@ static const std::vector<TCat> kMaleTraitCategories{
     { 0x01E65000u, 0.18f, {
         { "thicklegs",  { { "legssize", 35.0f } } },
         { "skinnylegs", { { "legsthinner", 42.0f } } },
+    } },
+    // Shoulders / frame width (2026-06-19 male diff pass) — broad vs narrow upper body.
+    { 0x05401D00u, 0.20f, {
+        { "broad",  { { "torsoshoulderinc", 30.0f }, { "armsshoulders", 18.0f } } },
+        { "narrow", { { "torsoshoulderinc", -18.0f } } },
+    } },
+    // Back / traps — thick lats or a strong yoke.
+    { 0x0BAC0B00u, 0.18f, {
+        { "wideback",   { { "torsobacksize", 32.0f } } },
+        { "thicktraps", { { "armstraps", 30.0f } } },
+    } },
+    // Glutes — a fuller, rounder rear (rare-ish).
+    { 0x06077B00u, 0.14f, {
+        { "bubble", { { "buttbooty", 28.0f }, { "buttroundy", 22.0f } } },
     } },
 };
 
@@ -286,29 +296,42 @@ float CenterDraw(std::mt19937& rng) {
 // dWaist>0 = cinched (narrower), <0 = wider. frameBias shifts size; frameScale spreads it.
 struct Archetype {
     const char* name; float weight; float frameBias; float frameScale;
-    float dBreasts, dButt, dHips, dThighs, dBelly, dWaist, dArms;
+    float dBreasts, dButt, dHips, dThighs, dBelly, dWaist, dArms, dShoulders;
     float toneBias;       // additive muscle tone (0-100 space)
     float intensityBias;  // additive SKEE intensity multiplier
 };
 static const std::vector<Archetype> kArchetypes{
-    //  name             wt     frB    frS   brs  butt  hips  thgh belly waist arms  tone   int
+    //  name             wt     frB    frS   brs  butt  hips  thgh belly waist arms  shld  tone   int
     // weight column flattened in the 2026-06-17 variety pass: top 4 (Balanced/Rect/Slim/Pear) went
     // from ~50% to ~38% of NPCs, rarer types raised, so fewer NPCs land on the same archetype.
-    { "Balanced",      10.0f,   0.0f, 1.00f,   0,    0,    0,    0,    0,    5,    0,    0,  0.00f },
-    { "Rectangle",      9.0f,   0.0f, 0.95f,  -6,   -8,   -8,   -4,    0,  -12,    0,    8, -0.03f },  // straight/boyish, no waist cinch
-    { "Slim",           8.0f, -12.0f, 0.90f,  -8,   -6,   -6,   -6,    0,    0,   -4,    5, -0.05f },
-    { "Pear",           9.0f,   2.0f, 1.00f,  -8,   22,   26,   20,    0,   12,    0,    0,  0.00f },
-    { "TopHeavy",       7.0f,   2.0f, 1.00f,  26,   -8,  -10,   -6,    0,    8,    0,    0,  0.00f },
-    { "Hourglass",      7.0f,   4.0f, 1.00f,  20,   18,   20,    8,    0,   40,    0,    0,  0.04f },
-    { "Voluptuous",     7.0f,  14.0f, 1.00f,  18,   18,   12,   10,    0,   18,    4,    0,  0.12f },
-    { "AppleSoft",      6.0f,   8.0f, 1.00f,   8,    4,    6,    8,   35,  -10,   14,    0,  0.05f },
-    { "BBW",            6.0f,  18.0f, 1.00f,  24,   24,   20,   22,   30,    0,   20,    0,  0.18f },  // big soft curvy (between Voluptuous & Obese)
-    { "Athletic",       6.0f,  -4.0f, 0.95f,   0,    8,    0,    6,   -5,   14,   -2,   55,  0.00f },
-    { "AthleticCurvy",  5.0f,   2.0f, 1.00f,  12,   18,    6,   10,   -6,   16,    0,   45,  0.00f },  // toned WITH curves (fitness)
-    { "Obese",          4.0f,  24.0f, 1.00f,  20,   20,   18,   28,   70,  -15,   30,    0,  0.22f },
-    { "Stocky",         4.0f,   6.0f, 0.85f,  -4,   16,   20,   20,    6,   -8,   10,   25,  0.05f },  // short sturdy, wide lower (warrior races)
-    { "Petite",         3.0f, -28.0f, 0.70f, -10,   -8,   -8,   -8,    0,    0,   -6,    0, -0.08f },
-    { "Amazon",         3.0f,  22.0f, 1.00f,  10,   16,   14,   20,    0,   10,    0,   65,  0.10f },
+    // shld (2026-06-19): shoulder breadth = the silhouette axis. Narrow on Pear/Petite (true pear),
+    // broad on Amazon/Stocky/Athletic/Rectangle/TopHeavy (V-taper / strong / boyish). Big "type" expander.
+    { "Balanced",      10.0f,   0.0f, 1.00f,   0,    0,    0,    0,    0,    5,    0,    0,    0,  0.00f },
+    { "Rectangle",      9.0f,   0.0f, 0.95f,  -6,   -8,   -8,   -4,    0,  -12,    0,   14,    8, -0.03f },  // straight/boyish, broad-ish, no waist cinch
+    { "Slim",           8.0f, -12.0f, 0.90f,  -8,   -6,   -6,   -6,    0,    0,   -4,   -4,    5, -0.05f },
+    { "Pear",           9.0f,   2.0f, 1.00f,  -8,   22,   26,   20,    0,   12,    0,  -16,    0,  0.00f },  // narrow shoulders + wide hips = true pear
+    { "TopHeavy",       7.0f,   2.0f, 1.00f,  26,   -8,  -10,   -6,    0,    8,    0,   14,    0,  0.00f },  // broad upper + big bust = inverted triangle
+    { "Hourglass",      7.0f,   4.0f, 1.00f,  20,   18,   20,    8,    0,   40,    0,    2,    0,  0.04f },
+    { "Voluptuous",     7.0f,  14.0f, 1.00f,  18,   18,   12,   10,    0,   18,    4,    4,    0,  0.12f },
+    { "AppleSoft",      6.0f,   8.0f, 1.00f,   8,    4,    6,    8,   35,  -10,   14,    6,    0,  0.05f },
+    { "BBW",            6.0f,  18.0f, 1.00f,  24,   24,   20,   22,   30,    0,   20,   10,    0,  0.18f },  // big soft curvy (between Voluptuous & Obese)
+    { "Athletic",       6.0f,  -4.0f, 0.95f,   0,    8,    0,    6,   -5,   14,   -2,   18,   55,  0.00f },  // broad shoulders, V-taper
+    { "AthleticCurvy",  5.0f,   2.0f, 1.00f,  12,   18,    6,   10,   -6,   16,    0,   10,   45,  0.00f },  // toned WITH curves (fitness)
+    { "Obese",          4.0f,  24.0f, 1.00f,  20,   20,   18,   28,   70,  -15,   30,   12,    0,  0.22f },
+    { "Stocky",         4.0f,   6.0f, 0.85f,  -4,   16,   20,   20,    6,   -8,   10,   22,   25,  0.05f },  // short sturdy, broad + wide lower (warrior races)
+    { "Petite",         3.0f, -28.0f, 0.70f, -10,   -8,   -8,   -8,    0,    0,   -6,  -16,    0, -0.08f },  // narrow shoulders too (small frame)
+    { "Amazon",         3.0f,  22.0f, 1.00f,  10,   16,   14,   20,    0,   10,    0,   24,   65,  0.10f },  // broad/strong
+    // NEW (2026-06-19) — silhouettes the shoulder axis + shape dims now make distinct. Complete the
+    // classic body-shape taxonomy (we already had Pear/Rectangle/Hourglass/TopHeavy/Apple/Round).
+    { "Inverted Triangle", 4.0f, 0.0f, 0.95f, 10,  -14,  -16,  -12,   -4,   10,    2,   26,   18, -0.02f },  // broad shoulders, narrow lower (counterpart to Pear)
+    { "Diamond",         4.0f,   8.0f, 1.00f,   4,   -6,   -6,   -8,   30,  -22,    6,  -14,    0,  0.06f },  // narrow shoulders, midsection-heavy, slim limbs
+    { "Spoon",           4.0f,   4.0f, 1.00f,  -4,   20,   30,   22,    6,   18,    2,  -14,    0,  0.04f },  // pronounced pear: wide hip shelf + cinched waist
+    { "MILF",            4.0f,  10.0f, 1.00f,  18,   14,   18,   12,   14,   20,    6,    2,    0,  0.08f },  // mature curvy-soft: full (slightly heavy) bust, soft low belly, kept waist
+    { "Slim Thick",      4.0f,   2.0f, 1.00f,   6,   26,   18,   20,   -8,   35,    0,    2,   25,  0.02f },  // tiny cinched waist + thick toned lower
+    { "Bottom Hourglass",4.0f,   4.0f, 1.00f,  10,   24,   26,   14,    0,   38,    0,   -2,    0,  0.04f },  // hourglass weighted LOW
+    { "Top Hourglass",   4.0f,   4.0f, 1.00f,  28,    8,    6,    2,    0,   38,    2,    8,    0,  0.04f },  // hourglass weighted UP (cinched waist, unlike TopHeavy)
+    { "Lollipop",        3.0f,  -8.0f, 0.92f,  34,   -8,   -8,   -8,   -4,   18,   -4,    0,    5,  0.02f },  // slim frame + large bust
+    { "Strongwoman",     3.0f,  18.0f, 1.00f,   8,   16,   14,   18,   20,   -6,   18,   24,   60,  0.12f },  // heavy + broad + muscular (bruiser/powerlifter, soft over muscle)
 };
 const Archetype& GetArchetype(std::uint32_t seedBase) {
     std::mt19937 rng{ seedBase ^ 0x0A5C1759u };
@@ -335,6 +358,7 @@ float ArchetypeDelta(std::uint32_t seedBase, const std::string& key) {
     else if (key == "belly")   d = a.dBelly;
     else if (key == "waist")   d = a.dWaist;
     else if (key == "arms")    d = a.dArms;
+    else if (key == "shoulderwidth") d = a.dShoulders;
     else return 0.0f;
     return d + DeltaJitter(seedBase, key);
 }
@@ -348,12 +372,12 @@ int GetArchetypeIndex(std::uint32_t seedBase) {
 }
 // CBPC physics tier per archetype (SAME order as kArchetypes):
 // 0 default / 1 toned (firm) / 2 lean (small) / 3 full (soft) / 4 heavy (max jiggle).
-// Balanced,Rect,Slim,Pear,Top,Hour,Volup,Apple,BBW,Athl,AthlCurvy,Obese,Stocky,Petite,Amazon
-static const int kArchPhysTier[15] = { 0, 2, 2, 0, 0, 0, 3, 3, 4, 1, 1, 4, 1, 2, 1 };
+// ...InvTri,Diamond,Spoon,MILF,SlimThick,BottomHour,TopHour,Lollipop,Strongwoman
+static const int kArchPhysTier[24] = { 0, 2, 2, 0, 0, 0, 3, 3, 4, 1, 1, 4, 1, 2, 1, 1, 3, 3, 3, 1, 0, 0, 2, 1 };
 // Softness bias per archetype (jiggle character, independent of size): muscle firms (negative),
 // fat softens (positive). Added to 0.5*frameScore in GetPhysicsPercent so physics CORRELATES with
 // the real body. Same order as kArchetypes.
-static const float kArchSoftBias[15] = { 7, -2, 0, 8, 6, 8, 30, 34, 50, -12, -2, 55, -6, -2, -8 };
+static const float kArchSoftBias[24] = { 7, -2, 0, 8, 6, 8, 30, 34, 50, -12, -2, 55, -6, -2, -8, -4, 28, 20, 22, 4, 8, 6, -2, 12 };
 
 // Volume slider base (0-100): frameScore interpolation + per-part noise + traits.
 // Factored out of GetMorphValue so the arm chain can derive forearm/wrist from "arms".
@@ -504,6 +528,66 @@ float WeightManager::GetMorphValue(RE::Actor* a_actor, float a_frameScore, std::
         return (key == "forearmsize") ? armsV * 0.72f : armsV * 0.40f;
     }
 
+    // ── New shape dimensions (2026-06-19): more expressible body types, every one DERIVED from a parent
+    //    region or the archetype, so they stay coherent — no new independent random axis (no extra clones)
+    //    and no spikes (volume ones go through GetVolumeMorph/SoftCap; shape ones apply *kDef <=1.0).
+    auto region = [&](const char* k) {
+        return TableVolume(seedBase, a_frameScore, k, unusualBody, a_actor != nullptr);
+    };
+    // Shoulders = the silhouette axis (archetype-driven), modestly frame-correlated.
+    if (key == "shoulderwidth") {
+        const float t = std::clamp(a_frameScore, 0.0f, 100.0f) / 100.0f;
+        const float d = unusualBody ? 0.0f : ArchetypeDelta(seedBase, "shoulderwidth");
+        return std::clamp(8.0f + 22.0f * t + d, 0.0f, 100.0f);
+    }
+    // Leg chain — derived from thighs so calf/outer/front-back ALWAYS track thigh thickness (a thick
+    // thigh never sits on a stick calf). chubbylegs also reads belly (overall lower-body fullness).
+    if (key == "calfsize")             return region("thighs") * 0.45f;
+    if (key == "thighoutsidethicc_v2") return region("thighs") * 0.55f;
+    if (key == "thighfbthicc_v2")      return region("thighs") * 0.45f;
+    if (key == "chubbylegs")
+        return std::clamp(0.45f * region("thighs") + 0.30f * region("belly") - 18.0f, 0.0f, 100.0f);
+    // Butt shape: rounder with size + the butt-shape trait (heart/round/dimpled); firmer for toned women.
+    if (key == "roundass")
+        return std::clamp(region("butt") * 0.55f + (unusualBody ? 0.0f : TraitDelta(seedBase, "roundass")), 0.0f, 100.0f);
+    if (key == "musclebutt") {
+        const ToneSet ts = ComputeTones(seedBase, a_frameScore, _athleticRatio, GetArchetype(seedBase).toneBias);
+        return ts.legs * 0.50f;
+    }
+    // Breast shape: cleavage/togetherness scale with size, cut by the "separated" trait (breastwidth);
+    // smaller/perkier busts sit higher.
+    if (key == "breaststogether" || key == "breastcleavage" || key == "breastheight") {
+        const auto& bdef = kMorphTable.find("breasts")->second;
+        const float t = std::clamp(a_frameScore, 0.0f, 100.0f) / 100.0f;
+        const float bt = unusualBody ? 0.0f : (ArchetypeDelta(seedBase, "breasts") + TraitDelta(seedBase, "breasts"));
+        const float breastSize = std::clamp(bdef.low + (bdef.high - bdef.low) * t + bt, 0.0f, 100.0f);
+        const float width = region("breastwidth");   // the "separated" trait raises this
+        if (key == "breaststogether") return std::clamp(breastSize * 0.45f - width * 0.5f, 0.0f, 100.0f);
+        if (key == "breastcleavage")  return std::clamp(breastSize * 0.40f - width * 0.4f, 0.0f, 100.0f);
+        return std::clamp((100.0f - breastSize) * 0.40f, 0.0f, 70.0f);   // breastheight: small/perky = higher set
+    }
+    // Belly/waist fullness: a real protruding belly only on heavy bodies; wider waistline on fuller frames.
+    if (key == "bigbelly") return std::clamp((region("belly") - 45.0f) * 1.10f, 0.0f, 100.0f);
+    if (key == "widewaistline" || key == "chubbywaist") {
+        const float t = std::clamp(a_frameScore, 0.0f, 100.0f) / 100.0f;
+        const float full = std::clamp(0.45f * region("belly") + 30.0f * t - 10.0f, 0.0f, 100.0f);
+        return (key == "chubbywaist") ? full : full * 0.90f;
+    }
+    // Torso breadth/depth: broad shoulders -> broader ribcage/torso (keeps the upper body coherent).
+    if (key == "bigtorso" || key == "chestwidth") {
+        const float t = std::clamp(a_frameScore, 0.0f, 100.0f) / 100.0f;
+        const float shld = unusualBody ? 0.0f : ArchetypeDelta(seedBase, "shoulderwidth");
+        const float v = std::clamp(6.0f + 18.0f * t + 0.5f * shld, 0.0f, 100.0f);
+        return (key == "chestwidth") ? v * 0.80f : v;
+    }
+    // Ribs show only on LEAN bodies (low frame + low belly) — never on soft/heavy.
+    if (key == "ribsprominance")
+        return std::clamp(40.0f - 0.40f * a_frameScore - 0.50f * region("belly"), 0.0f, 40.0f);
+    // Hip projection tracks hip width (curvier hips push forward a little).
+    if (key == "hipforward") return region("hips") * 0.30f;
+    // Leg shape (classic curve) tracks thigh fullness — subtle, for silhouette variety.
+    if (key == "legshapeclassic") return region("thighs") * 0.30f;
+
     // Volume base + traits (frameScore interpolation + per-part noise). Shape/trait-only
     // sliders have no table entry → base 0, value comes from traits.
     return TableVolume(seedBase, a_frameScore, key, unusualBody, a_actor != nullptr);
@@ -565,7 +649,7 @@ int WeightManager::GetPhysicsTier(RE::Actor* a_actor) {
     if (!a_actor) return 0;
     std::scoped_lock lock(_mutex);
     const int idx = GetArchetypeIndex(GetActorSeed(a_actor->GetFormID()));
-    return (idx >= 0 && idx < 15) ? kArchPhysTier[idx] : 0;
+    return (idx >= 0 && idx < static_cast<int>(kArchetypes.size())) ? kArchPhysTier[idx] : 0;
 }
 
 int WeightManager::GetArchetypeId(RE::Actor* a_actor) {
@@ -578,7 +662,28 @@ std::string WeightManager::GetArchetypeName(RE::Actor* a_actor) {
     if (!a_actor) return "";
     std::scoped_lock lock(_mutex);
     const int idx = GetArchetypeIndex(GetActorSeed(a_actor->GetFormID()));
-    return (idx >= 0 && idx < 15) ? kArchetypes[idx].name : "";
+    return (idx >= 0 && idx < static_cast<int>(kArchetypes.size())) ? kArchetypes[idx].name : "";
+}
+
+// Which mutually-exclusive option of a female trait category fired for this NPC (deterministic), or "".
+// Public body API so other mods can read notable fine shapes (butt shape, breast shape) without re-rolling.
+namespace { const char* FiredOptionName(std::size_t catIdx, std::uint32_t seed) {
+    if (catIdx >= kTraitCategories.size()) return "";
+    const auto& c = kTraitCategories[catIdx];
+    std::mt19937 r{ seed ^ c.salt };
+    if (std::uniform_real_distribution<float>(0.0f, 1.0f)(r) >= c.chance) return "";
+    const int idx = std::uniform_int_distribution<int>(0, static_cast<int>(c.options.size()) - 1)(r);
+    return c.options[idx].name;
+} }
+std::string WeightManager::GetButtShapeName(RE::Actor* a_actor) {     // category 4 = butt shape
+    if (!a_actor) return "";
+    std::scoped_lock lock(_mutex);
+    return FiredOptionName(4, GetActorSeed(a_actor->GetFormID()));
+}
+std::string WeightManager::GetBreastShapeName(RE::Actor* a_actor) {   // category 5 = breast shape
+    if (!a_actor) return "";
+    std::scoped_lock lock(_mutex);
+    return FiredOptionName(5, GetActorSeed(a_actor->GetFormID()));
 }
 
 int WeightManager::GetPhysicsPercent(RE::Actor* a_actor, int a_kind) {
@@ -586,7 +691,7 @@ int WeightManager::GetPhysicsPercent(RE::Actor* a_actor, int a_kind) {
     const float frame = GetFrameScore(a_actor);   // self-locks; call BEFORE locking below
     std::scoped_lock lock(_mutex);
     const int idx = GetArchetypeIndex(GetActorSeed(a_actor->GetFormID()));
-    const float soft = (idx >= 0 && idx < 15) ? kArchSoftBias[idx] : 0.0f;
+    const float soft = (idx >= 0 && idx < static_cast<int>(kArchetypes.size())) ? kArchSoftBias[idx] : 0.0f;
     // bounce: size + softness; collision: more size-driven (a big body has big colliders even if firm)
     const float pct = (a_kind == 1) ? (0.60f * frame + 0.30f * soft + 2.0f)
                                     : (0.50f * frame + soft);
@@ -599,23 +704,104 @@ int WeightManager::GetPhysicsPercent(RE::Actor* a_actor, int a_kind) {
 
 namespace {
 
-// Muscle level 0-100: bimodal, kept LOW — HIMBO sliders distort past ~1.0, so the buff
-// band tops out around 55 (× intensity / 100 stays well under the distortion threshold).
+// Male body archetypes (HIMBO) — the male counterpart to the female archetypes. Each biases the
+// muscle/fat draws (the two build axes) and adds coherent shape deltas (V-taper, waist, belly, arms),
+// so men come in distinct TYPES (lean, dadbod, bodybuilder, heavyset, bear...) instead of a smear.
+// dWaist > 0 = thicker waist (less V); < 0 = tighter (more V-taper). Muscle/fat in 0-100 draw space.
+struct MaleArchetype {
+    const char* name; float weight;
+    float muscle, fat;        // added to the per-NPC muscle/fat draws
+    float dShoulders;         // torsoshoulderinc (broad/V-taper)
+    float dWaist;             // torsowaistsize (- = tight V, + = thick)
+    float dBelly;             // torsobelly
+    float dArms;              // armsbiceps/delts/shoulders
+    float toneBias;           // definition lift (abs/cuts)
+    float intensityBias;
+};
+static const std::vector<MaleArchetype> kMaleArchetypes{
+    //  name           wt   musc  fat  shld  waist belly arms tone  int
+    { "Average",      12.f,  0.f,  0.f,   0,   0,    0,   0,   0,  0.00f },
+    { "Lean",         10.f, -6.f, -8.f,   4,  -4,   -6,   0,   8, -0.02f },
+    { "Fit",           9.f, 12.f, -8.f,  18, -12,   -8,   6,  14,  0.00f },  // athletic V-taper, abs
+    { "Swimmer",       5.f,  6.f, -6.f,  22, -10,   -6,   2,  12, -0.02f },  // broad shoulders, lean
+    { "Soldier",       7.f, 14.f,  2.f,  12,  -4,    0,   8,   6,  0.02f },  // solid all-around
+    { "Dadbod",        8.f,  4.f, 18.f,   4,   8,   22,   2,  -4,  0.05f },  // soft belly + ok arms
+    { "Heavyset",      6.f, -2.f, 28.f,   0,  12,   30,   0,  -8,  0.10f },  // overweight, soft
+    { "Stocky",        5.f, 14.f, 18.f,   6,  10,   14,  10,   0,  0.08f },  // broad + thick (bear)
+    { "Lanky",         7.f, -8.f, -6.f,  -6,  -2,   -4,  -6,   2, -0.04f },  // narrow, slight
+    { "Twink",         4.f,-10.f, -4.f,  -4,  -2,   -6,  -8,   4, -0.05f },  // very slim, soft
+    { "Bodybuilder",   3.f, 24.f, -6.f,  28, -14,   -6,  20,  18,  0.02f },  // rare, huge cut
+    { "Powerlifter",   3.f, 22.f, 18.f,   8,   6,   12,  18,   6,  0.10f },  // rare, massive thick
+};
+// CBPC bounce % per male archetype (pec/belly jiggle): firm for muscular/lean, soft for fat. Same order.
+// Avg,Lean,Fit,Swim,Soldier,Dadbod,Heavyset,Stocky,Lanky,Twink,Bodybuilder,Powerlifter
+static const float kMaleArchSoftBias[12] = { 28, 14, 12, 14, 20, 60, 80, 50, 16, 22, 16, 45 };
+const MaleArchetype& GetMaleArchetype(std::uint32_t seed) {
+    std::mt19937 rng{ seed ^ 0x0A5C2B71u };
+    float total = 0.0f; for (const auto& a : kMaleArchetypes) total += a.weight;
+    float r = std::uniform_real_distribution<float>(0.0f, total)(rng);
+    for (const auto& a : kMaleArchetypes) { if (r < a.weight) return a; r -= a.weight; }
+    return kMaleArchetypes.front();
+}
+int GetMaleArchetypeIndex(std::uint32_t seed) {
+    std::mt19937 rng{ seed ^ 0x0A5C2B71u };
+    float total = 0.0f; for (const auto& a : kMaleArchetypes) total += a.weight;
+    float r = std::uniform_real_distribution<float>(0.0f, total)(rng);
+    for (std::size_t i = 0; i < kMaleArchetypes.size(); ++i) { if (r < kMaleArchetypes[i].weight) return static_cast<int>(i); r -= kMaleArchetypes[i].weight; }
+    return 0;
+}
+float MaleArchetypeDelta(std::uint32_t seed, const std::string& key) {
+    const MaleArchetype& a = GetMaleArchetype(seed);
+    float d;
+    if      (key == "torsoshoulderinc" || key == "armsshoulders" || key == "torsowidth") d = a.dShoulders;
+    else if (key == "torsowaistsize")                                                    d = a.dWaist;
+    else if (key == "torsobelly" || key == "torsobellylhandles")                         d = a.dBelly;
+    else if (key == "armsbiceps" || key == "armsdelts" || key == "armstraps")            d = a.dArms;
+    else return 0.0f;
+    const auto h = static_cast<std::uint32_t>(std::hash<std::string>{}(key));
+    std::mt19937 jr{ seed ^ h ^ 0x0DE28B00u };
+    return d + std::uniform_real_distribution<float>(-kDeltaJitter * 0.6f, kDeltaJitter * 0.6f)(jr);
+}
+
+// Tighter soft-knee for HIMBO: it distorts above ~1.0 (much tighter than CBBE's 1.30 head-room),
+// so male volume asymptotes to ~1.12. Keeps a big bodybuilder visibly bigger but never breaks the mesh.
+float SoftCapMale(float v) {
+    constexpr float knee = 0.95f, ceiling = 1.12f, range = ceiling - knee;
+    if (v <= knee) return v;
+    return knee + range * (1.0f - std::exp(-(v - knee) / range));
+}
+
+// Muscle level 0-100. Widened (2026-06-19 male diff pass) so men span lean->huge (was capped ~55 = all
+// small). Big values reach ~1.0 SKEE and SoftCapMale protects the HIMBO mesh past that.
 float MaleMuscle(std::uint32_t seed) {
     std::mt19937 rng{ seed ^ 0x4D5C1E00u };
     const float r = std::uniform_real_distribution<float>(0.0f, 1.0f)(rng);
-    if (r < 0.45f) return std::uniform_real_distribution<float>(0.0f, 16.0f)(rng);
-    if (r < 0.75f) return std::uniform_real_distribution<float>(16.0f, 36.0f)(rng);
-    return std::uniform_real_distribution<float>(36.0f, 55.0f)(rng);
+    if (r < 0.42f) return std::uniform_real_distribution<float>(0.0f, 18.0f)(rng);
+    if (r < 0.74f) return std::uniform_real_distribution<float>(18.0f, 42.0f)(rng);
+    return std::uniform_real_distribution<float>(42.0f, 68.0f)(rng);
 }
 
-// Fat level 0-100: skewed low. Ceiling tamed so chunky bodies don't blow out.
+// Fat level 0-100: skewed low but wider top so heavy men exist (Dadbod/Heavyset).
 float MaleFat(std::uint32_t seed) {
     std::mt19937 rng{ seed ^ 0x7A700000u };
     const float r = std::uniform_real_distribution<float>(0.0f, 1.0f)(rng);
-    if (r < 0.62f) return std::uniform_real_distribution<float>(0.0f, 16.0f)(rng);
-    if (r < 0.86f) return std::uniform_real_distribution<float>(16.0f, 30.0f)(rng);
-    return std::uniform_real_distribution<float>(30.0f, 48.0f)(rng);
+    if (r < 0.58f) return std::uniform_real_distribution<float>(0.0f, 18.0f)(rng);
+    if (r < 0.85f) return std::uniform_real_distribution<float>(18.0f, 34.0f)(rng);
+    return std::uniform_real_distribution<float>(34.0f, 55.0f)(rng);
+}
+
+// Per-region independence for males (the anti-clone lever the male side lacked — females have it via
+// kMorphTable). Moderate so per-NPC regions decorrelate (pecs vs arms vs legs) WITHOUT breaking the
+// buildScale proportion lock. Only volume sliders; shape/def stay tied to tone/M-F. Fraction of [0,100].
+float MaleIndep(std::string_view key) {
+    if (key == "muscle" || key == "bodymass" || key == "torsomass")                                   return 0.13f;
+    if (key == "pecssize" || key == "pecsmass" || key == "pecswidth")                                  return 0.15f;
+    if (key == "armsbiceps" || key == "armsdelts" || key == "armsshoulders" ||
+        key == "armstraps" || key == "armsfore")                                                       return 0.13f;
+    if (key == "chubby" || key == "torsobelly" || key == "torsobellylhandles")                         return 0.17f;
+    if (key == "legssize" || key == "legsthigh" || key == "legscalfsize")                              return 0.13f;
+    if (key == "buttbooty" || key == "buttroundy" || key == "torsobacksize")                           return 0.15f;
+    return 0.0f;
 }
 
 // HIMBO sliders derived from muscle (M) and fat (F). Lowercase keys (Papyrus lowercases).
@@ -623,23 +809,34 @@ float MaleFat(std::uint32_t seed) {
 float MaleSlider(std::string_view key, float M, float F) {
     if (key == "muscle")                                return M;
     if (key == "armsbiceps" || key == "armsdelts")      return M * 0.85f;
+    if (key == "armsshoulders")                         return M * 0.60f;   // delts/shoulder cap
+    if (key == "armstraps"   || key == "armstrapsmeat") return M * 0.50f;
+    if (key == "armsfore"    || key == "armsbrachio")   return M * 0.55f;   // forearm chain (tracks biceps)
     if (key == "pecssize"   || key == "pecsmass")       return M * 0.70f + (M + F) * 0.05f;
+    if (key == "pecswidth")                             return M * 0.50f;
     if (key == "chubby"     || key == "legschubby")     return F;
     if (key == "torsobelly" || key == "torsobellychub") return F * 0.90f;
+    if (key == "torsobellylhandles")                    return F * 0.70f;   // love handles (fat)
     if (key == "bodymass"   || key == "torsomass")      return M * 0.42f + F * 0.48f;
+    if (key == "torsobacksize")                         return M * 0.50f + F * 0.20f;  // lats/back bulk
     if (key == "buttbooty")                             return 18.0f + M * 0.22f + F * 0.26f;
+    if (key == "buttroundy")                            return (18.0f + M * 0.22f + F * 0.26f) * 0.55f;
     if (key == "legssize")                              return M * 0.35f + F * 0.40f;
+    if (key == "legsthigh")                             return M * 0.35f + F * 0.42f;
+    if (key == "legscalfsize")                          return M * 0.30f + F * 0.30f;   // calf tracks leg mass
     if (key == "lean")                                  return std::clamp(75.0f - M * 0.6f - F * 0.9f, 0.0f, 100.0f);
 
     // Muscle TONE = definition (cut/ripped vs soft). Emerges from the distribution:
     // muscle present + low fat → abs/ribs/V-cut show; high fat smooths them away.
     const float tone = std::clamp(M - F * 1.1f + 5.0f, 0.0f, 100.0f);
-    if (key == "torsoflatabs")        return tone * 0.85f;
-    if (key == "torsovline")          return tone * 0.60f;
-    if (key == "torsoribsdefinition") return tone * 0.50f;
-    if (key == "armstrapsvalleys")    return tone * 0.45f;
+    if (key == "torsoflatabs")         return tone * 0.85f;
+    if (key == "torsovline")           return tone * 0.60f;
+    if (key == "torsoribsdefinition")  return tone * 0.50f;
+    if (key == "armstrapsvalleys")     return tone * 0.45f;
+    if (key == "torsobackdefinition")  return tone * 0.45f;   // back cut
+    if (key == "torsobackshape")       return tone * 0.40f;
 
-    return 0.0f;  // pure trait sliders (pecsflatten, vtaper...) start at 0
+    return 0.0f;  // pure trait/archetype sliders (pecsflatten, vtaper, torsoshoulderinc...) start at 0
 }
 
 }  // namespace
@@ -665,22 +862,31 @@ float WeightManager::GetMaleMorphValue(RE::Actor* a_actor, std::string_view morp
             M = std::uniform_real_distribution<float>(50.0f, 64.0f)(r);
         else
             F = std::uniform_real_distribution<float>(42.0f, 54.0f)(r);
+    } else {
+        // Archetype biases the two build axes (coherent: every part derives from M/F) — gives
+        // distinct male TYPES. Plus a per-NPC build jitter so men WITHIN one archetype aren't clones.
+        // Capped so SKEE stays under HIMBO's distortion threshold (SoftCapMale).
+        const MaleArchetype& ma = GetMaleArchetype(seedBase);
+        std::mt19937 jr{ seedBase ^ 0x0B17DE00u };
+        M = std::clamp(M + ma.muscle + std::uniform_real_distribution<float>(-6.0f, 6.0f)(jr), 0.0f, 88.0f);
+        F = std::clamp(F + ma.fat    + std::uniform_real_distribution<float>(-6.0f, 6.0f)(jr), 0.0f, 78.0f);
     }
 
     float val = MaleSlider(key, M, F);
 
-    // Traits — suppressed on unusual bodies (they replace the trait set, like females).
-    if (uv < 0) val += MaleTraitDelta(seedBase, key);
+    // Traits + archetype shape deltas — suppressed on unusual bodies (they replace the set, like females).
+    if (uv < 0) val += MaleTraitDelta(seedBase, key) + MaleArchetypeDelta(seedBase, key);
 
-    // Proportionality "amarra": ONE per-NPC build scale (multiplicative → every part
-    // scales together, staying proportional) + a tiny per-part jitter. This replaces the
-    // old large INDEPENDENT per-part noise that decorrelated the body (e.g. big arms on a
-    // thin chest). All parts already derive from the same M/F, so this keeps them tied.
+    // Proportionality "amarra": ONE per-NPC build scale (multiplicative → every part scales together,
+    // staying proportional) THEN a per-region independence noise (the anti-clone lever) so two men with
+    // the same build still differ region to region (pecs vs arms vs legs) — moderate, so proportions hold.
     std::mt19937 br{ seedBase ^ 0x0B01D000u };
     const float buildScale = std::uniform_real_distribution<float>(0.92f, 1.08f)(br);
     const auto h = static_cast<std::uint32_t>(std::hash<std::string>{}(key));
     std::mt19937 nr{ seedBase ^ h ^ 0x0A1Eu };
-    val = val * buildScale + std::uniform_real_distribution<float>(-4.0f, 4.0f)(nr);
+    float indep = MaleIndep(key) * kIndepScale;
+    if (uv >= 0) indep *= 2.0f;   // unusual: more decorrelation (mirrors the female outlier boost)
+    val = val * buildScale + std::uniform_real_distribution<float>(-50.0f, 50.0f)(nr) * indep;
 
     // Player-tunable male build (MCM "Male build"): scales the whole male body uniformly,
     // so proportions are preserved at any setting.
@@ -705,7 +911,38 @@ float WeightManager::GetMaleIntensity(RE::Actor* a_actor) {
     float intensity = (roll < _fantasyRatio)
         ? std::uniform_real_distribution<float>(0.98f, 1.15f)(rng)  // fantasy: bodybuilder
         : std::uniform_real_distribution<float>(0.72f, 0.92f)(rng);
+    intensity = std::clamp(intensity + GetMaleArchetype(GetActorSeed(id)).intensityBias, 0.55f, 1.30f);
     return intensity * _morphScale;
+}
+
+// Male volume morph already combined with intensity and SOFT-CAPPED for HIMBO (tighter ceiling than CBBE).
+// Papyrus uses this for the male kVol sliders so a bodybuilder is bigger but never breaks the HIMBO mesh.
+float WeightManager::GetMaleVolumeMorph(RE::Actor* a_actor, std::string_view morphName) {
+    const float raw = GetMaleMorphValue(a_actor, morphName) * (GetMaleIntensity(a_actor) / 100.0f);
+    return SoftCapMale(raw);
+}
+
+int WeightManager::GetMalePhysicsPercent(RE::Actor* a_actor, int a_kind) {
+    if (!a_actor) return 20;
+    std::scoped_lock lock(_mutex);
+    const int idx = GetMaleArchetypeIndex(GetActorSeed(a_actor->GetFormID()));
+    const float soft = (idx >= 0 && idx < static_cast<int>(kMaleArchetypes.size())) ? kMaleArchSoftBias[idx] : 20.0f;
+    // collision a touch more size-driven; bounce is the archetype softness directly.
+    const float pct = (a_kind == 1) ? (0.75f * soft + 8.0f) : soft;
+    return static_cast<int>(std::clamp(pct, 5.0f, 95.0f));
+}
+
+int WeightManager::GetMaleArchetypeId(RE::Actor* a_actor) {
+    if (!a_actor) return -1;
+    std::scoped_lock lock(_mutex);
+    return GetMaleArchetypeIndex(GetActorSeed(a_actor->GetFormID()));
+}
+
+std::string WeightManager::GetMaleArchetypeName(RE::Actor* a_actor) {
+    if (!a_actor) return "";
+    std::scoped_lock lock(_mutex);
+    const int idx = GetMaleArchetypeIndex(GetActorSeed(a_actor->GetFormID()));
+    return (idx >= 0 && idx < static_cast<int>(kMaleArchetypes.size())) ? kMaleArchetypes[idx].name : "";
 }
 
 void WeightManager::QueueForMorphs(RE::Actor* a_actor) {
@@ -814,6 +1051,9 @@ int WeightManager::ReprocessAllLoaded() {
     auto* pc = RE::PlayerCharacter::GetSingleton();
     if (!pl) return 0;
     std::scoped_lock lock(_mutex);   // recursive
+    // RANDOM mode -> reprocess RE-ROLLS each body (fresh per-actor seed); SEEDED -> keep the seed (re-apply
+    // the same body, only picking up changed settings/physics). Matches the mode's intent.
+    const bool reroll = (_mode == WeightMode::kRandom);
     int n = 0;
     for (auto& h : pl->highActorHandles) {
         auto ptr = h.get();
@@ -821,12 +1061,17 @@ int WeightManager::ReprocessAllLoaded() {
         if (!a || a == pc || a->IsDead() || a->IsDisabled() || !a->Is3DLoaded()) continue;
         if (!a->GetActorBase()) continue;                 // sex/body-mode filtered later in ApplyMorphs
         const RE::FormID id = a->GetFormID();
+        if (reroll) {                                     // new random body this press (distinct per actor)
+            const std::uint32_t ns = OBW::CollectEntropy() ^ id;
+            _overrideSeed[id] = ns;
+            if (auto* base = a->GetActorBase()) _overrideSeed[base->GetFormID()] = ns;  // weight, next load
+        }
         _processed.erase(id);                             // allow re-apply (current logic + physics)
         if (std::find(_morphQueue.begin(), _morphQueue.end(), id) == _morphQueue.end())
             _morphQueue.push_back(id);
         ++n;
     }
-    SKSE::log::info("OBW: reprocess all loaded -> {} actors queued", n);
+    SKSE::log::info("OBW: reprocess all loaded -> {} actors queued ({})", n, reroll ? "re-rolled" : "same seed");
     return n;
 }
 
@@ -931,7 +1176,7 @@ void WeightManager::Load(SKSE::SerializationInterface* a_intf) {
         } else if (type == kRecordCfg) {
             std::uint8_t mode{};
             a_intf->ReadRecordData(mode);
-            _mode = static_cast<WeightMode>(mode);
+            _mode = (mode >= 2) ? WeightMode::kSeeded : static_cast<WeightMode>(mode);  // migrate old NPC Default(2)
             a_intf->ReadRecordData(_bias);
         } else if (type == kRecordBody) {
             std::uint8_t bm{};
