@@ -73,6 +73,17 @@ public:
     // Global morph intensity multiplier (1.0 = default). Set from the MCM.
     float         GetMorphScale() const noexcept { return _morphScale; }
     void          SetMorphScale(float s)         { _morphScale = s; }
+
+    // Neck-seam COLOR fix: pull the head's facegen skin tint toward the body skin tone. Strength 0..1
+    // (0 = off). ApplyNeckColor runs the pass on one actor with the live strength; called from the body
+    // apply (preset path in C++, procedural path via the native).
+    float         GetNeckColorFix() const noexcept { return _neckColorFix; }
+    void          SetNeckColorFix(float s)         { _neckColorFix = std::clamp(s, 0.0f, 1.0f); }
+    void          ApplyNeckColor(RE::Actor* a_actor);
+    // Apply now AND re-apply on a few delays (+2/+6/+12s): the head/body tone settles late (RSV re-applies the
+    // head on NiNodeUpdate, the body variant lands deferred), so a one-shot match reverts. The delayed re-applies
+    // let OBW win LAST and hold. Safe to call per actor; deduped by the worker. No-op if _neckColorFix<=0.
+    void          ScheduleNeckColor(RE::FormID a_id);
     // Preset orientation strength (0.0-1.0) for body mode 2 (Procedural Oriented): how much the OBody
     // preset pulls the procedural blend per slider (0 = pure procedural, 1 = pure preset). MCM-tunable.
     float         GetPresetOrient() const noexcept { return _presetOrient; }
@@ -226,6 +237,7 @@ private:
     BodyMode      _bodyMode{ BodyMode::kProcedural };
     float         _bias{ 0.0f };
     float         _morphScale{ 1.0f };
+    float         _neckColorFix{ 0.5f };   // head->body tint blend strength (0 = off); set from Config/MCM
     float         _presetOrient{ 0.5f };   // body mode 2 blend strength (0 = pure procedural, 1 = pure preset)
     float         _fantasyRatio{ 0.15f };
     float         _unusualRatio{ 0.06f };

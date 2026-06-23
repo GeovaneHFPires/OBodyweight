@@ -28,6 +28,10 @@ inline bool  g_defaultMaleBodies         = true;
 inline float g_defaultMaleBuild          = 1.0f;
 // Debug logging (verbose per-NPC/per-event diagnostics). Off by default; MCM-toggleable.
 inline bool  g_defaultDebugLog           = false;
+// Neck-seam COLOR fix: blend the head's facegen skin TINT toward the body skin tone (bodyTintColor) by this
+// strength (0 = off, 1 = head tint forced to the body tone). Reduces a head<->body tone mismatch at the neck
+// (a runtime tint pull, not the baked texture - so it lessens, not always erases, the seam). MCM-tunable.
+inline float g_defaultNeckColorFix       = 0.5f;
 
 // Parse the INI. Call once in SKSEPluginLoad, before WeightManager is constructed.
 void Load();

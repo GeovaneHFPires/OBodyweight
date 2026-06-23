@@ -78,6 +78,9 @@ bool ApplyPresetMorphs(RE::StaticFunctionTag*, RE::BSFixedString a_preset, RE::A
             OBW::g_morph->ClearBodyMorphKeys(a, "OBody");              // remove OBody's contribution
             OBW::g_morph->SetMorph(a, obKey.c_str(), "OBody", 1.0f);   // re-assert "processed"
             OBW::g_morph->ApplyBodyMorphs(a, false);                   // rebuild body + worn armor
+            auto& wm = WeightManager::GetSingleton();
+            wm.ApplyNeckColor(a);                                       // pull the head tint to the body tone (neck-seam color)
+            wm.ScheduleNeckColor(a->GetFormID());                       // + delayed re-applies so it holds past RSV/late body
         });
         return true;
     } catch (const std::exception& e) {
@@ -105,6 +108,34 @@ std::vector<RE::BSFixedString> GetNpcPlugins(RE::StaticFunctionTag*) {
     std::vector<RE::BSFixedString> out;
     out.reserve(v.size());
     for (const auto& n : v) out.emplace_back(n.c_str());
+    return out;
+}
+
+// Paged NPC-plugin list for the MCM Exclusions page. Papyrus arrays cap at 128, so the page shows ~120 at
+// a time. Config::GetNpcPlugins() is the FULL (unbounded) list; cache it so page-flips don't re-enumerate.
+static std::vector<std::string>& NpcPluginCache() {
+    static std::vector<std::string> cache;
+    return cache;
+}
+
+std::int32_t GetNpcPluginCount(RE::StaticFunctionTag*) {
+    auto& c = NpcPluginCache();
+    c = Config::GetNpcPlugins();   // refresh when the page (re)builds (it calls this first)
+    return static_cast<std::int32_t>(c.size());
+}
+
+std::vector<RE::BSFixedString> GetNpcPluginsPage(RE::StaticFunctionTag*, std::int32_t a_page,
+                                                 std::int32_t a_perPage) {
+    auto& c = NpcPluginCache();
+    if (c.empty()) c = Config::GetNpcPlugins();
+    std::vector<RE::BSFixedString> out;
+    if (a_perPage <= 0 || a_page < 0) return out;
+    const std::size_t start = static_cast<std::size_t>(a_page) * static_cast<std::size_t>(a_perPage);
+    if (start >= c.size()) return out;
+    std::size_t stop = start + static_cast<std::size_t>(a_perPage);
+    if (stop > c.size()) stop = c.size();
+    out.reserve(stop - start);
+    for (std::size_t i = start; i < stop; ++i) out.emplace_back(c[i].c_str());
     return out;
 }
 
@@ -164,6 +195,20 @@ float GetMorphScale(RE::StaticFunctionTag*) {
 
 void SetMorphScale(RE::StaticFunctionTag*, float a_scale) {
     WeightManager::GetSingleton().SetMorphScale(a_scale);
+}
+
+// Neck-seam color fix: pull this actor's head tint toward its body tone (uses the live strength). Applies now
+// AND schedules a few delayed re-applies so it holds past RSV's deferred head re-apply / the late body tone.
+void NormalizeNeckColor(RE::StaticFunctionTag*, RE::Actor* a_actor) {
+    auto& wm = WeightManager::GetSingleton();
+    wm.ApplyNeckColor(a_actor);
+    if (a_actor) wm.ScheduleNeckColor(a_actor->GetFormID());
+}
+float GetNeckColorFix(RE::StaticFunctionTag*) {
+    return WeightManager::GetSingleton().GetNeckColorFix();
+}
+void SetNeckColorFix(RE::StaticFunctionTag*, float a_strength) {
+    WeightManager::GetSingleton().SetNeckColorFix(a_strength);
 }
 
 float GetPresetOrient(RE::StaticFunctionTag*) {
@@ -410,6 +455,8 @@ bool Register(RE::BSScript::IVirtualMachine* a_vm) {
     a_vm->RegisterFunction("SetDebugLog",         kScript, SetDebugLog);
     a_vm->RegisterFunction("IsExcluded",          kScript, IsExcluded);
     a_vm->RegisterFunction("GetNpcPlugins",       kScript, GetNpcPlugins);
+    a_vm->RegisterFunction("GetNpcPluginCount",   kScript, GetNpcPluginCount);
+    a_vm->RegisterFunction("GetNpcPluginsPage",   kScript, GetNpcPluginsPage);
     a_vm->RegisterFunction("IsPluginExcluded",    kScript, IsPluginExcluded);
     a_vm->RegisterFunction("SetPluginExcluded",   kScript, SetPluginExcluded);
     a_vm->RegisterFunction("GetMode",             kScript, GetMode);
@@ -428,6 +475,9 @@ bool Register(RE::BSScript::IVirtualMachine* a_vm) {
     a_vm->RegisterFunction("GetVolumeMorph",      kScript, GetVolumeMorph);
     a_vm->RegisterFunction("GetMorphScale",       kScript, GetMorphScale);
     a_vm->RegisterFunction("SetMorphScale",       kScript, SetMorphScale);
+    a_vm->RegisterFunction("NormalizeNeckColor",  kScript, NormalizeNeckColor);
+    a_vm->RegisterFunction("GetNeckColorFix",     kScript, GetNeckColorFix);
+    a_vm->RegisterFunction("SetNeckColorFix",     kScript, SetNeckColorFix);
     a_vm->RegisterFunction("GetPresetOrient",     kScript, GetPresetOrient);
     a_vm->RegisterFunction("SetPresetOrient",     kScript, SetPresetOrient);
     a_vm->RegisterFunction("GetFantasyRatio",     kScript, GetFantasyRatio);

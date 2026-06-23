@@ -3,10 +3,14 @@
 #include "Config.hpp"
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 #include <cmath>
+#include <mutex>
 #include <random>
 #include <string>
+#include <thread>
 #include <unordered_map>
+#include <vector>
 
 namespace OBW {
 
@@ -23,6 +27,86 @@ WeightManager::WeightManager() {
     _reRollKey = Config::g_defaultReRollKey;
     _debugLog = Config::g_defaultDebugLog;
     g_debugLog = _debugLog;
+    _neckColorFix = Config::g_defaultNeckColorFix;
+}
+
+// NECK-SEAM COLOR FIX (head -> body tone). Reads the NPC's body skin tone (bodyTintColor) and blends the
+// head's facegen skin TINT toward it by _neckColorFix. Body is untouched (its texture is the reference); only
+// the head's tint material shifts, so a head<->body tone mismatch at the neck is reduced. This is a runtime
+// tint pull (a multiplier), NOT the baked facegen texture - so it lessens, doesn't always erase, a seam rooted
+// in very different textures. No-op if strength<=0 or the head 3D isn't loaded yet.
+void WeightManager::ApplyNeckColor(RE::Actor* a_actor) {
+    const float t = _neckColorFix;
+    if (!a_actor || t <= 0.0f) return;
+    auto* npc = a_actor->GetActorBase();
+    if (!npc) return;
+    const auto bt = npc->bodyTintColor;                          // body skin tone (the reference)
+    const RE::NiColor body{ bt.red / 255.0f, bt.green / 255.0f, bt.blue / 255.0f };
+    auto* faceNode = a_actor->GetFaceNode();
+    if (!faceNode) return;                                        // head not built yet -> skip
+    const float k = t > 1.0f ? 1.0f : t;
+    int touched = 0;
+    RE::BSVisit::TraverseScenegraphGeometries(faceNode, [&](RE::BSGeometry* a_geom) -> RE::BSVisit::BSVisitControl {
+        auto* prop = a_geom->GetGeometryRuntimeData().properties[RE::BSGeometry::States::kEffect].get();
+        auto* lp   = netimmerse_cast<RE::BSLightingShaderProperty*>(prop);
+        if (!lp || !lp->material) return RE::BSVisit::BSVisitControl::kContinue;
+        if (lp->material->GetFeature() != RE::BSShaderMaterial::Feature::kFaceGenRGBTint)
+            return RE::BSVisit::BSVisitControl::kContinue;        // only the head's facegen-tint skin geometry
+        auto* mat = static_cast<RE::BSLightingShaderMaterialFacegenTint*>(lp->material);
+        mat->tintColor.red   += (body.red   - mat->tintColor.red)   * k;
+        mat->tintColor.green += (body.green - mat->tintColor.green) * k;
+        mat->tintColor.blue  += (body.blue  - mat->tintColor.blue)  * k;
+        ++touched;
+        return RE::BSVisit::BSVisitControl::kContinue;
+    });
+    if (_debugLog && touched)
+        SKSE::log::info("NeckColor: '{}' head tint -> body tone (k={:.2f}, {} skin mat)",
+                        npc->GetName(), k, touched);
+}
+
+// Deferred re-apply worker: the head/body tone settles LATE (RSV re-applies the head on NiNodeUpdate; the body
+// variant lands deferred), so a single match reverts. We re-apply at a few delays so OBW corrects LAST and holds.
+namespace {
+struct PendingNeck { RE::FormID id; double dueMs; };
+std::mutex                 s_neckMutex;
+std::vector<PendingNeck>   s_neckQueue;
+std::atomic<bool>          s_neckThread{ false };
+double NowMs() {
+    using namespace std::chrono;
+    return duration<double, std::milli>(steady_clock::now().time_since_epoch()).count();
+}
+}
+
+void WeightManager::ScheduleNeckColor(RE::FormID a_id) {
+    if (_neckColorFix <= 0.0f || !a_id) return;
+    const double now = NowMs();
+    {
+        std::lock_guard lk(s_neckMutex);
+        for (double d : { 2000.0, 6000.0, 12000.0 })       // re-apply after the late actors settle
+            s_neckQueue.push_back({ a_id, now + d });
+    }
+    if (s_neckThread.exchange(true)) return;               // worker already running
+    std::thread([] {
+        for (;;) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+            const double now = NowMs();
+            std::vector<RE::FormID> due;
+            {
+                std::lock_guard lk(s_neckMutex);
+                for (auto it = s_neckQueue.begin(); it != s_neckQueue.end();) {
+                    if (it->dueMs <= now) { due.push_back(it->id); it = s_neckQueue.erase(it); }
+                    else ++it;
+                }
+            }
+            for (RE::FormID id : due) {
+                if (auto* t = SKSE::GetTaskInterface())
+                    t->AddTask([id] {
+                        if (auto* a = RE::TESForm::LookupByID<RE::Actor>(id))
+                            WeightManager::GetSingleton().ApplyNeckColor(a);
+                    });
+            }
+        }
+    }).detach();
 }
 
 WeightManager& WeightManager::GetSingleton() noexcept {
@@ -1002,7 +1086,9 @@ RE::Actor* WeightManager::GetNextMorphActor() {
 void WeightManager::WatchForFallback(RE::FormID a_id) {
     if (!a_id) return;
     std::scoped_lock lock(_mutex);
-    if (_processed.contains(a_id)) return;        // already handled this session
+    // Watch on EVERY 3D load (no _processed early-out): OBody re-distributes its preset on each cell
+    // crossing, so OBW must RE-ASSERT each load to keep priority (it loses to OBody otherwise). The grace
+    // window still lets OBody apply first; OBW's re-apply (which clears OBody's key + rebuilds) lands after.
     _fallbackWatch.try_emplace(a_id, kFallbackGraceTicks);
 }
 
@@ -1017,12 +1103,13 @@ int WeightManager::SweepFallback() {
     for (auto it = _fallbackWatch.begin(); it != _fallbackWatch.end();) {
         if (--(it->second) > 0) { ++it; continue; }   // still within the OBody grace window
         const RE::FormID id = it->first;
-        if (!_processed.contains(id)) {
-            auto* actor = RE::TESForm::LookupByID<RE::Actor>(id);
-            if (actor && actor->Is3DLoaded() && !actor->IsDead() && !Config::IsActorExcluded(actor)) {
-                QueueForMorphs(actor);   // dedups vs the live queue; recursive_mutex makes this re-lock safe
-                ++enqueued;
-            }
+        // Re-apply on EVERY load (no _processed gate) so OBW overrides OBody's re-distribution: the apply
+        // (ApplyMorphs) itself clears OBody's morph key + rebuilds, so re-running it after OBody's re-fire
+        // puts OBW back on top. The live-queue dedup in QueueForMorphs stops double-queuing within a drain.
+        auto* actor = RE::TESForm::LookupByID<RE::Actor>(id);
+        if (actor && actor->Is3DLoaded() && !actor->IsDead() && !Config::IsActorExcluded(actor)) {
+            QueueForMorphs(actor);
+            ++enqueued;
         }
         it = _fallbackWatch.erase(it);
     }

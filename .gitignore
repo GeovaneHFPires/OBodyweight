@@ -15,6 +15,9 @@ make_*.py
 plugin/sim/
 _disabled_cbpc_configs/
 
+# Dev/inspection tools (Mutagen/Synthesis utilities) — environment-specific, NOT part of OBW; never publish.
+tools/
+
 # Temp / OS
 *.tmp
 Thumbs.db

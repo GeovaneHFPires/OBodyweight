@@ -20,11 +20,14 @@ public:
                                           RE::BSTEventSource<RE::TESObjectLoadedEvent>*) override {
         if (!a_event || !a_event->loaded) return RE::BSEventNotifyControl::kContinue;
         auto& wm = OBW::WeightManager::GetSingleton();
-        if (wm.GetBodyMode() == OBW::BodyMode::kOBodyPreset) return RE::BSEventNotifyControl::kContinue;
         auto* actor = RE::TESForm::LookupByID<RE::Actor>(a_event->formID);
         if (!actor || actor == RE::PlayerCharacter::GetSingleton()) return RE::BSEventNotifyControl::kContinue;
         if (!actor->GetActorBase() || !actor->HasKeywordString("ActorTypeNPC"))
             return RE::BSEventNotifyControl::kContinue;   // humanoid NPCs only (skip creatures/objects)
+        // Neck-seam color fix for EVERY humanoid NPC, in ALL body modes (the seam is a pre-existing facegen/RSV
+        // issue, not OBW-specific). The deferred re-applies hold it past RSV's late head re-apply.
+        wm.ScheduleNeckColor(actor->GetFormID());
+        if (wm.GetBodyMode() == OBW::BodyMode::kOBodyPreset) return RE::BSEventNotifyControl::kContinue;
         wm.WatchForFallback(actor->GetFormID());
         return RE::BSEventNotifyControl::kContinue;
     }

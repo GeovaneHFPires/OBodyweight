@@ -42,6 +42,7 @@ void Load() {
     g_defaultMaleBodies         = GetPrivateProfileIntA("Defaults", "MaleBodies", 1, kIniPath) != 0;
     g_defaultMaleBuild          = std::clamp(ReadFloat("Defaults", "MaleBuild", 1.0f), 0.0f, 2.0f);
     g_defaultDebugLog           = GetPrivateProfileIntA("Defaults", "DebugLog", 0, kIniPath) != 0;
+    g_defaultNeckColorFix       = std::clamp(ReadFloat("Defaults", "NeckColorFix", 0.5f), 0.0f, 1.0f);
     SKSE::log::info("Config: MorphScale={:.2f}, Fantasy={:.2f}, Unusual={:.2f}, BreastUnusual={:.2f}, Athletic={:.2f}, FemaleBodies={}, MaleBodies={}, MaleBuild={:.2f}",
                     g_defaultMorphScale, g_defaultFantasyRatio, g_defaultUnusualRatio,
                     g_defaultBreastUnusualRatio, g_defaultAthleticRatio, g_defaultFemaleBodies, g_defaultMaleBodies, g_defaultMaleBuild);
@@ -138,13 +139,8 @@ std::vector<std::string> GetNpcPlugins() {
                 names.emplace(file->GetFilename());
         }
     }
-    std::vector<std::string> out;
-    out.reserve(names.size());
-    for (const auto& n : names) {
-        if (out.size() >= 128) break;  // Papyrus array + MCM page cap
-        out.push_back(n);
-    }
-    return out;
+    // Full list (the MCM Exclusions page paginates it ~120/page; GetNpcPluginsPage chunks this).
+    return std::vector<std::string>(names.begin(), names.end());
 }
 
 }  // namespace OBW::Config

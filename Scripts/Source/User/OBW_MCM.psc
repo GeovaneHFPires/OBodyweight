@@ -7,6 +7,7 @@ int _maleOption     = -1
 int _maleBuildOption = -1
 int _scaleOption    = -1
 int _orientOption   = -1
+int _neckColorOption = -1
 int _fantasyOption  = -1
 int _unusualOption  = -1
 int _bUnusualOption = -1
@@ -21,8 +22,12 @@ int _debugOption    = -1
 string[] _modeLabels
 string[] _bodyLabels
 
-string[] _exclPlugins   ; Exclusions page: plugin name per toggle (parallel to _exclOptions)
+string[] _exclPlugins   ; Exclusions page: plugin name per toggle (parallel to _exclOptions) - current page chunk
 int[]    _exclOptions   ; Exclusions page: option ID per plugin
+int      _exclPage      ; Exclusions: current page index (0-based)
+int      _exclPerPage   ; Exclusions: plugins per page (<128 for the Papyrus array + MCM option cap)
+int      _exclPrevOption
+int      _exclNextOption
 
 Event OnConfigInit()
     ModName = "OBodyNG Weight"
@@ -130,6 +135,10 @@ Event OnPageReset(string page)
     _orientOption = AddSliderOption("Preset orientation", OBW_Native.GetPresetOrient() * 100.0, "{0}%", orientFlag)
     AddEmptyOption()
 
+    ; Appearance (all modes): neck-seam color match - how strongly the head tint is pulled to the body tone.
+    AddHeaderOption("Appearance")
+    _neckColorOption = AddSliderOption("Neck color match", OBW_Native.GetNeckColorFix() * 100.0, "{0}%")
+
     ; Seed (only meaningful in Seeded weight mode).
     AddHeaderOption("Seed (Seeded Mode)")
     int curSeed = OBW_Native.GetSeed()
@@ -144,22 +153,34 @@ EndEvent
 ; Exclusions page: one checkbox per plugin that adds NPCs. Checked = OBW leaves that mod's NPCs alone.
 Function BuildExclusionsPage()
     SetCursorFillMode(TOP_TO_BOTTOM)
-    AddHeaderOption("Exclude NPCs by plugin")
-    _exclPlugins = OBW_Native.GetNpcPlugins()
-    if _exclPlugins.Length == 0
+    if _exclPerPage == 0
+        _exclPerPage = 120   ; <128 to fit the Papyrus array + the SkyUI per-page option cap (leave room for nav)
+    endif
+    int total = OBW_Native.GetNpcPluginCount()
+    if total == 0
+        AddHeaderOption("Exclude NPCs by plugin")
         AddTextOption("(no NPC-adding plugins found)", "", OPTION_FLAG_DISABLED)
         return
     endif
+    int pageCount = ((total - 1) / _exclPerPage) + 1
+    if _exclPage >= pageCount
+        _exclPage = 0
+    endif
+    AddHeaderOption("Exclude NPCs by plugin (page " + (_exclPage + 1) + "/" + pageCount + " - " + total + " plugins)")
+    if pageCount > 1
+        _exclPrevOption = AddTextOption("<<< Prev page", "")
+        _exclNextOption = AddTextOption("Next page >>>", "")
+    else
+        _exclPrevOption = -1
+        _exclNextOption = -1
+    endif
+    _exclPlugins = OBW_Native.GetNpcPluginsPage(_exclPage, _exclPerPage)
     _exclOptions = new int[128]
     int i = 0
     while i < _exclPlugins.Length
         _exclOptions[i] = AddToggleOption(_exclPlugins[i], OBW_Native.IsPluginExcluded(_exclPlugins[i]))
         i += 1
     endwhile
-    if _exclPlugins.Length >= 128
-        AddEmptyOption()
-        AddHeaderOption("List capped at 128 - use OBodyNGWeight_Exclusions.txt for more")
-    endif
 EndFunction
 
 Event OnOptionMenuOpen(int option)
@@ -202,6 +223,11 @@ Event OnOptionSliderOpen(int option)
         SetSliderDialogInterval(0.05)
     elseif option == _orientOption
         SetSliderDialogStartValue(OBW_Native.GetPresetOrient() * 100.0)
+        SetSliderDialogDefaultValue(50.0)
+        SetSliderDialogRange(0.0, 100.0)
+        SetSliderDialogInterval(5.0)
+    elseif option == _neckColorOption
+        SetSliderDialogStartValue(OBW_Native.GetNeckColorFix() * 100.0)
         SetSliderDialogDefaultValue(50.0)
         SetSliderDialogRange(0.0, 100.0)
         SetSliderDialogInterval(5.0)
@@ -272,6 +298,9 @@ Event OnOptionSliderAccept(int option, float value)
     elseif option == _athleticOption
         OBW_Native.SetAthleticRatio(value / 100.0)
         SetSliderOptionValue(_athleticOption, value, "{0}%")
+    elseif option == _neckColorOption
+        OBW_Native.SetNeckColorFix(value / 100.0)
+        SetSliderOptionValue(_neckColorOption, value, "{0}%")
     endif
 EndEvent
 
@@ -280,7 +309,9 @@ Event OnOptionSelect(int option)
         OBW_Native.RegenerateSeed()
         int newSeed = OBW_Native.GetSeed()
         SetTextOptionValue(_seedOption, newSeed as string)
-        Debug.Notification("OBodyNG Weight: new seed generated.")
+        if OBW_Native.GetDebugLog()
+            Debug.Notification("OBodyNG Weight: new seed generated.")
+        endif
     elseif option == _femaleOption
         bool newFem = !OBW_Native.GetFemaleBodies()
         OBW_Native.SetFemaleBodies(newFem)
@@ -309,7 +340,23 @@ Event OnOptionSelect(int option)
     elseif option == _reprocessOption
         SendModEvent("OBW_Reprocess")   ; OBW_Quest re-queues all loaded NPCs + arms the drain
     elseif _exclPlugins
-        ; Exclusions page: a per-plugin checkbox.
+        ; Exclusions page: page nav first, then the per-plugin checkboxes.
+        if _exclPrevOption != -1 && option == _exclPrevOption
+            _exclPage -= 1
+            if _exclPage < 0
+                _exclPage = (OBW_Native.GetNpcPluginCount() - 1) / _exclPerPage   ; wrap to last page
+            endif
+            ForcePageReset()
+            return
+        elseif _exclNextOption != -1 && option == _exclNextOption
+            int pgs = ((OBW_Native.GetNpcPluginCount() - 1) / _exclPerPage) + 1
+            _exclPage += 1
+            if _exclPage >= pgs
+                _exclPage = 0   ; wrap to first page
+            endif
+            ForcePageReset()
+            return
+        endif
         int i = 0
         while i < _exclPlugins.Length
             if option == _exclOptions[i]

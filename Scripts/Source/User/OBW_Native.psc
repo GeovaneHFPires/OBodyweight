@@ -25,6 +25,12 @@ Function Log(string asMsg) global native
 bool Function GetDebugLog() global native
 Function SetDebugLog(bool abOn) global native
 
+; Neck-seam COLOR fix: pull the actor's head facegen skin tint toward its body skin tone (reduces a head<->body
+; tone mismatch at the neck). Strength 0..1 (0 = off), tuned in the MCM. NormalizeNeckColor runs the pass now.
+Function NormalizeNeckColor(Actor akActor) global native
+float Function GetNeckColorFix() global native
+Function SetNeckColorFix(float afStrength) global native
+
 ; True if the actor's source plugin is excluded (MCM checkbox or any OBodyNGWeight_Exclusions*.txt).
 ; OBW leaves such NPCs untouched (no procedural morphs, no preset re-application).
 bool Function IsExcluded(Actor akActor) global native
@@ -33,6 +39,9 @@ bool Function IsExcluded(Actor akActor) global native
 ; at 128). IsPluginExcluded/SetPluginExcluded read/toggle the MCM-managed exclusion of one plugin
 ; (Set persists to OBodyNGWeight_Exclusions_MCM.txt, global across saves).
 string[] Function GetNpcPlugins() global native
+; Paged variants (the exclusion list is unbounded; the MCM shows ~120/page since Papyrus arrays cap at 128).
+int Function GetNpcPluginCount() global native
+string[] Function GetNpcPluginsPage(int aiPage, int aiPerPage) global native
 bool Function IsPluginExcluded(string asPlugin) global native
 Function SetPluginExcluded(string asPlugin, bool abOn) global native
 

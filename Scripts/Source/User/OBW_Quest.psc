@@ -26,7 +26,9 @@ EndEvent
 ; so the current generation logic + CBPC physics re-apply without cell reloads.
 Event OnReprocess(string asEvent, string asStr, float afNum, Form akSender)
     int n = OBW_Native.ReprocessAllLoaded()
-    Debug.Notification("OBodyNG Weight: reprocessing " + n + " loaded NPC(s)...")
+    if OBW_Native.GetDebugLog()
+        Debug.Notification("OBodyNG Weight: reprocessing " + n + " loaded NPC(s)...")
+    endif
     RegisterForSingleUpdate(0.3)
 EndEvent
 
@@ -69,7 +71,9 @@ Event OnKeyDown(int keyCode)
     if !a
         return
     endif
-    Debug.Notification("Regenerating body: " + a.GetDisplayName())
+    if OBW_Native.GetDebugLog()
+        Debug.Notification("Regenerating body: " + a.GetDisplayName())
+    endif
     OBW_Native.RegenerateActor(a)
     RegisterForSingleUpdate(0.3)   ; arm the drain
 EndEvent
@@ -219,6 +223,8 @@ Function ApplyMorphs(Actor akActor)
         NiOverride.UpdateModelWeight(akActor)
     endif
 
+    OBW_Native.NormalizeNeckColor(akActor)   ; pull head tint to body tone (neck-seam color fix; no-op if off)
+
     ; CBPC physics preset by archetype (soft dep — no-op without CBPC). Both sexes now (male pec/belly
     ; jiggle scales with the male archetype: firm for Fit/Bodybuilder, soft for Dadbod/Heavyset).
     ApplyPhysicsTier(akActor)
@@ -291,6 +297,7 @@ Function ApplyPresetWeighted(Actor akActor)
         OBW_Native.MarkMorphsApplied(akActor)
         NiOverride.UpdateModelWeight(akActor)
     endif
+    OBW_Native.NormalizeNeckColor(akActor)   ; neck-seam color fix (preset PSC-fallback path)
     OBW_Native.Log("preset-weight (PSC fallback): applied '" + preset + "' to " + akActor.GetActorBase().GetName())
 EndFunction
 
