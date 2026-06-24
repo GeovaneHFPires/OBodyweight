@@ -94,7 +94,7 @@ Event OnActorGenerated(Actor akActor, string presetName)
         return
     endif
     ; Per-sex master toggles: don't even queue a sex the user disabled. 0 = male, 1 = female.
-    int sex = akActor.GetActorBase().GetSex()
+    int sex = ActorSex(akActor)
     if sex == 0 && !OBW_Native.GetMaleBodies()
         return
     endif
@@ -147,10 +147,31 @@ Event OnUpdate()
     RegisterForSingleUpdate(2.0)            ; persistent light poll for the procedural fallback
 EndEvent
 
+; Robust sex detection. GetActorBase() returns the LEAF base; an NPC that USES TRAITS from a template /
+; leveled list keeps the leaf's sex flag at its default (male), so females mis-route to the male (HIMBO)
+; body. GetLeveledActorBase() resolves the template chain to the REAL base -> correct sex. Falls back to
+; the leaf if the resolve is None. (Root cause of "female NPCs getting a male body after a reload".)
+int Function ActorSex(Actor akActor)
+    ActorBase b = akActor.GetLeveledActorBase()
+    if !b
+        b = akActor.GetActorBase()
+    endif
+    return b.GetSex()
+EndFunction
+
 Function ApplyMorphs(Actor akActor)
     ; Excluded plugins (OBodyNGWeight_Exclusions*.txt): leave those NPCs entirely to OBody/vanilla.
     if OBW_Native.IsExcluded(akActor)
         return
+    endif
+    ; DIAGNOSTIC (DebugLog): confirm sex routing - leaf base flag vs template-resolved sex.
+    if OBW_Native.GetDebugLog()
+        ActorBase _lb = akActor.GetLeveledActorBase()
+        int _sl = -1
+        if _lb
+            _sl = _lb.GetSex()
+        endif
+        OBW_Native.Log("sex " + akActor.GetDisplayName() + " base=" + akActor.GetActorBase().GetSex() + " lvl=" + _sl)
     endif
     ; Body mode 1 = OBody Presets, now WEIGHT-DRIVEN: re-apply the OBody-assigned preset
     ; interpolated at the per-NPC mock weight (faithful curve + synthesized lean<->full on
@@ -162,7 +183,7 @@ Function ApplyMorphs(Actor akActor)
 
     ; Per-sex master toggles: leave a disabled sex entirely alone — don't even touch OBody's
     ; morphs, so OBody's own presets keep working for that sex. 0 = male, 1 = female.
-    bool isFemale = akActor.GetActorBase().GetSex() == 1
+    bool isFemale = ActorSex(akActor) == 1
     if isFemale && !OBW_Native.GetFemaleBodies()
         return
     endif
@@ -238,7 +259,7 @@ EndFunction
 ; (Weight mode = NPC Default) is filtered out by the callers before we get here.
 Function ApplyPresetWeighted(Actor akActor)
     ; Per-sex master toggles: leave a disabled sex to OBody/vanilla (don't strip its preset).
-    bool isFemale = akActor.GetActorBase().GetSex() == 1
+    bool isFemale = ActorSex(akActor) == 1
     if isFemale && !OBW_Native.GetFemaleBodies()
         return
     endif
@@ -312,7 +333,7 @@ Function ApplyPhysicsTier(Actor akActor)
     ; Continuous, body-correlated: bounce follows size + softness, collision follows size.
     ; (Within one archetype a bigger body now jiggles more; muscle firms; fat softens.) Same OBW config
     ; bones serve males (Breast = pecs on the male skeleton); the male percent comes from the male archetype.
-    if akActor.GetActorBase().GetSex() == 1
+    if ActorSex(akActor) == 1
         CBPCPluginScript.ApplyBounceInterpolation(akActor, "OBW", OBW_Native.GetPhysicsPercent(akActor, 0))
         CBPCPluginScript.ApplyCollisionInterpolation(akActor, "OBW", OBW_Native.GetPhysicsPercent(akActor, 1))
     else

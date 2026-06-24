@@ -1,3 +1,30 @@
+Version 1.4.6
+
+- Fix: female NPCs no longer get a male body. NPCs that inherit their looks from a template (a lot of
+  followers and mod-added or leveled NPCs do) were being read as male, so OBW gave them the male HIMBO body
+  - and with the 1.4.5 re-assert it re-applied that wrong body every time they reloaded (cell change), which
+  looked like the body "resetting" or being lost after walking between areas. OBW now resolves the real sex
+  through the template, so women keep their female body and it sticks across cell changes.
+- Tamer default physics (CBPC). The out-of-the-box jiggle was toned down - less exaggerated bounce on
+  breasts, butt, belly and thighs, with a slightly firmer breast spring, for a more grounded default look.
+  As always, you can retune it in the CBPC configs or replace it with your own.
+
+
+Version 1.4.5
+
+- Plays nicely with OBody now. If you run OBody as well, it used to overwrite OBW's bodies every time an
+  NPC reloaded (walking between cells and so on) - OBW now reasserts itself on each load, so your procedural
+  bodies actually stick. This only affects the Procedural and Procedural Oriented modes; OBody Sim Weight,
+  and any preset you've put on an NPC by hand, are still left completely alone.
+- The "exclude by plugin" list isn't capped at 128 anymore. The MCM Exclusions page is paginated now (Prev /
+  Next page), so your whole load order shows up no matter how many NPC mods you run.
+- New neck-seam colour fix. OBW gently matches each NPC's head tone to their body, so the neck blends in
+  instead of showing a colour line. There's a "Neck color match" slider in the MCM if you want to ease it
+  off or turn it off entirely.
+- Tidier during normal play. The little debug pop-ups ("reprocessing...", "new seed", "regenerating body")
+  no longer show up unless you've switched Debug logging on yourself.
+
+
 Version 1.4.4
 
 - MANY more female body types. Added 9 archetypes (Inverted Triangle, Diamond, Spoon, MILF, Slim Thick,

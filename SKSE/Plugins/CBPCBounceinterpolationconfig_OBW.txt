@@ -7,28 +7,28 @@ UniqueName = OBW
 # CBPConfig_zzOBW_BreastFirm.txt. Format: Alias.amplitude <value@0%> <value@100%>. percent ~32 ~= 1.0.
 
 # --- Breasts (range kept low; firmness comes from the global stiffness/damping override) ---
-Breast.amplitude 0.55 1.10
-LBreast.amplitude 0.55 1.10
-RBreast.amplitude 0.55 1.10
-ExtraBreast1L.amplitude 0.55 1.10
-ExtraBreast2L.amplitude 0.55 1.10
-ExtraBreast3L.amplitude 0.55 1.10
-ExtraBreast1R.amplitude 0.55 1.10
-ExtraBreast2R.amplitude 0.55 1.10
-ExtraBreast3R.amplitude 0.55 1.10
+Breast.amplitude 0.55 0.90
+LBreast.amplitude 0.55 0.90
+RBreast.amplitude 0.55 0.90
+ExtraBreast1L.amplitude 0.55 0.90
+ExtraBreast2L.amplitude 0.55 0.90
+ExtraBreast3L.amplitude 0.55 0.90
+ExtraBreast1R.amplitude 0.55 0.90
+ExtraBreast2R.amplitude 0.55 0.90
+ExtraBreast3R.amplitude 0.55 0.90
 
 # --- Butt (a touch more swing) ---
-Butt.amplitude 0.85 1.85
-LButt.amplitude 0.85 1.85
-RButt.amplitude 0.85 1.85
+Butt.amplitude 0.85 1.40
+LButt.amplitude 0.85 1.40
+RButt.amplitude 0.85 1.40
 
 # --- Belly ---
-Belly.amplitude 0.78 1.45
+Belly.amplitude 0.78 1.20
 
 # --- Legs (thighs/calves) - subtler ---
-LFrontThigh.amplitude 0.82 1.35
-RFrontThigh.amplitude 0.82 1.35
-LRearThigh.amplitude 0.82 1.35
-RRearThigh.amplitude 0.82 1.35
-LRearCalf.amplitude 0.82 1.30
-RRearCalf.amplitude 0.82 1.30
+LFrontThigh.amplitude 0.82 1.15
+RFrontThigh.amplitude 0.82 1.15
+LRearThigh.amplitude 0.82 1.15
+RRearThigh.amplitude 0.82 1.15
+LRearCalf.amplitude 0.82 1.12
+RRearCalf.amplitude 0.82 1.12
