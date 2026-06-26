@@ -5,12 +5,14 @@ Scriptname OBW_Quest extends Quest
 ; "die" on a reloaded save where OnInit no longer runs.
 
 int _reRollKey = 26   ; [ / { — overwritten from the plugin on init/load
+int _excludeKey = 0   ; aim + this key toggles one NPC's OBW exclusion (0 = unbound)
 
 Event OnInit()
     OBodyNative.RegisterForOBodyEvent(self as Quest)
     RegisterForModEvent("OBW_RebindKey", "OnRebindKey")
     RegisterForModEvent("OBW_Reprocess", "OnReprocess")
     BindReRollKey()
+    BindExcludeKey()
     RegisterForSingleUpdate(2.0)   ; start the persistent manual-assign poll (self-perpetuates)
 EndEvent
 
@@ -19,6 +21,7 @@ Event OnPlayerLoadGame()
     RegisterForModEvent("OBW_RebindKey", "OnRebindKey")
     RegisterForModEvent("OBW_Reprocess", "OnReprocess")
     BindReRollKey()
+    BindExcludeKey()
     RegisterForSingleUpdate(2.0)   ; start the persistent manual-assign poll (self-perpetuates)
 EndEvent
 
@@ -45,12 +48,48 @@ Function BindReRollKey()
     RegisterForKey(_reRollKey)
 EndFunction
 
+Function BindExcludeKey()
+    UnregisterForKey(_excludeKey)
+    _excludeKey = OBW_Native.GetExcludeKey()
+    if _excludeKey != 0
+        RegisterForKey(_excludeKey)
+    endif
+EndFunction
+
+; Aim at an NPC + press the exclude key -> toggle that NPC's OBW exclusion (persisted by FormID).
+Function ToggleExcludeTarget()
+    Actor a
+    if OBW_Native.IsVR()
+        a = OBW_Native.GetVRLookTarget()
+    else
+        a = Game.GetCurrentCrosshairRef() as Actor
+    endif
+    if !a || a == Game.GetPlayer()
+        Debug.Notification("OBW: aim at an NPC to exclude or include it.")
+        return
+    endif
+    bool nowExcl = !OBW_Native.IsExcluded(a)
+    OBW_Native.SetActorExcluded(a, nowExcl)
+    if nowExcl
+        Debug.Notification(a.GetDisplayName() + " excluded from OBW (reload to revert its body).")
+    else
+        Debug.Notification(a.GetDisplayName() + " included in OBW.")
+        OBW_Native.RegenerateActor(a)
+        RegisterForSingleUpdate(0.3)
+    endif
+EndFunction
+
 ; Fired by the MCM when the re-roll key is rebound.
 Event OnRebindKey(string asEvent, string asStr, float afNum, Form akSender)
     BindReRollKey()
+    BindExcludeKey()
 EndEvent
 
 Event OnKeyDown(int keyCode)
+    if keyCode == _excludeKey && _excludeKey != 0
+        ToggleExcludeTarget()
+        return
+    endif
     if keyCode != _reRollKey
         return
     endif
@@ -225,24 +264,13 @@ Function ApplyMorphs(Actor akActor)
     endif
     NiOverride.SetBodyMorph(akActor, obKey, "OBody", wasProcessed)
 
-    ; Apply the new shape with the FEWEST body rebuilds — each rebuild makes SKEE
-    ; reprocess EVERY overlay, which is heavy with large overlay counts.
-    Form bodyArmor = akActor.GetWornForm(0x00000004)
-    if bodyArmor
-        ; Clothed (2 rebuilds): re-equip the body-slot armor. The UNEQUIP rebuilds the
-        ; (briefly visible) body with the persisted morphs, and the EQUIP applies them to
-        ; the armor (OBody's trick — morphs apply at equip time). A separate
-        ; UpdateModelWeight would be a redundant 3rd rebuild, so it's skipped here.
-        OBW_Native.MarkMorphsApplied(akActor)   ; suppress unequip-triggered re-fire
-        akActor.UnequipItem(bodyArmor, false, true)
-        Utility.Wait(0.05)
-        OBW_Native.MarkMorphsApplied(akActor)   ; suppress equip-triggered re-fire
-        akActor.EquipItem(bodyArmor, false, true)
-    else
-        ; Nude (1 rebuild): nothing to re-equip — update the body directly.
-        OBW_Native.MarkMorphsApplied(akActor)
-        NiOverride.UpdateModelWeight(akActor)
-    endif
+    ; Apply the new shape the OBody way: ONE deferred SKEE ApplyBodyMorphs - it re-morphs the body AND the
+    ; worn armor and lets the engine rebuild on its next update (deferUpdate=true). Replaces the old clothed
+    ; armor re-equip (UnequipItem + Wait + EquipItem = 2 forced rebuilds, reprocessed every overlay, and the
+    ; body briefly showed mid-swap = the cell-entry stutter + the visible morph pop). Works clothed or nude.
+    ; Same one-shot guard as before so the rebuild doesn't re-fire OBody's distribution loop.
+    OBW_Native.MarkMorphsApplied(akActor)
+    OBW_Native.ApplyBody(akActor)               ; g_morph->ApplyBodyMorphs(actor, deferUpdate=true)
 
     OBW_Native.NormalizeNeckColor(akActor)   ; pull head tint to body tone (neck-seam color fix; no-op if off)
 

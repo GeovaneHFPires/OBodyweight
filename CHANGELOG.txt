@@ -1,3 +1,14 @@
+Version 1.4.7
+
+- Smoother body loading - no more stutter or "pop". Bodies now apply the way OBody does internally (the
+  game updates the model on its own next pass) instead of forcing a heavy reload, so the brief freeze and
+  the visible shape "snap" when an NPC's body loaded in are gone - especially noticeable in crowded areas.
+- Exclude a single NPC, not just whole mods. You can now leave one specific NPC alone: add a
+  "Plugin.esp|0xFormID" line to any OBodyNGWeight_Exclusions file, or bind the new "Exclude target key" in
+  the MCM and press it while aiming at an NPC to toggle them on or off. Great for a custom-bodied follower
+  you don't want OBW to reshape.
+
+
 Version 1.4.6
 
 - Fix: female NPCs no longer get a male body. NPCs that inherit their looks from a template (a lot of

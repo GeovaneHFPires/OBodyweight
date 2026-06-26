@@ -28,12 +28,19 @@ Function SetDebugLog(bool abOn) global native
 ; Neck-seam COLOR fix: pull the actor's head facegen skin tint toward its body skin tone (reduces a head<->body
 ; tone mismatch at the neck). Strength 0..1 (0 = off), tuned in the MCM. NormalizeNeckColor runs the pass now.
 Function NormalizeNeckColor(Actor akActor) global native
+; OBody's apply method: re-morph the body + worn armor and DEFER the rebuild (no armor re-equip, no synchronous re-skin).
+Function ApplyBody(Actor akActor) global native
 float Function GetNeckColorFix() global native
 Function SetNeckColorFix(float afStrength) global native
 
 ; True if the actor's source plugin is excluded (MCM checkbox or any OBodyNGWeight_Exclusions*.txt).
 ; OBW leaves such NPCs untouched (no procedural morphs, no preset re-application).
 bool Function IsExcluded(Actor akActor) global native
+; Exclude / re-include a SPECIFIC NPC by FormID (runtime toggle for a hotkey/MCM); persists to the MCM exclusion file.
+Function SetActorExcluded(Actor akActor, bool abOn) global native
+; Per-NPC exclusion hotkey (DirectInput scancode; 0 = unbound). Aim at an NPC + press to toggle its exclusion. MCM-bindable.
+int Function GetExcludeKey() global native
+Function SetExcludeKey(int aiKey) global native
 
 ; MCM exclusions. GetNpcPlugins = sorted list of plugins that ADD NPCs (for the checkbox list, capped
 ; at 128). IsPluginExcluded/SetPluginExcluded read/toggle the MCM-managed exclusion of one plugin

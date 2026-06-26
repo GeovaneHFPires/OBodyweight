@@ -13,6 +13,7 @@ int _unusualOption  = -1
 int _bUnusualOption = -1
 int _athleticOption = -1
 int _keyOption      = -1
+int _exclKeyOption  = -1
 int _reprocessOption = -1
 int _biasOption     = -1
 int _seedOption     = -1
@@ -119,6 +120,7 @@ Event OnPageReset(string page)
     AddHeaderOption("Apply")
     _reprocessOption = AddTextOption("Reprocess all loaded NPCs", "[ Click ]")
     _keyOption = AddKeyMapOption("Re-roll key", OBW_Native.GetReRollKey())
+    _exclKeyOption = AddKeyMapOption("Exclude target key", OBW_Native.GetExcludeKey())
 
     ; ── RIGHT COLUMN: per-mode / distribution settings ──────────────────
     ; Procedural variety: the distribution dials for the procedural modes (0 / 2).
@@ -270,6 +272,15 @@ Event OnOptionKeyMapChange(int option, int keyCode, string conflictControl, stri
         ; Keep the ModEvent as a fallback for any setup where the form lookup fails.
         int h = ModEvent.Create("OBW_RebindKey")
         ModEvent.Send(h)
+    elseif option == _exclKeyOption
+        OBW_Native.SetExcludeKey(keyCode)
+        SetKeyMapOptionValue(_exclKeyOption, keyCode)
+        OBW_Quest q2 = Game.GetFormFromFile(0x000800, "OBodyNGWeight.esp") as OBW_Quest
+        if q2
+            q2.BindExcludeKey()
+        endif
+        int h2 = ModEvent.Create("OBW_RebindKey")
+        ModEvent.Send(h2)
     endif
 EndEvent
 
@@ -395,6 +406,8 @@ Event OnOptionHighlight(int option)
         SetInfoText("Percentage of women with athletic muscle tone — visible abs, arm and leg definition. The rest are soft/normal. Belly/softness fades the definition. Default 15%. 0% disables. (Males get muscle tone automatically from their build.)")
     elseif option == _keyOption
         SetInfoText("Hotkey to re-roll the body of the NPC under your crosshair (Procedural mode). Default is the [ / { key. If it clashes with OBody, set OBody's selection hotkey to None.")
+    elseif option == _exclKeyOption
+        SetInfoText("Hotkey: aim at an NPC and press to EXCLUDE it from OBW (or re-include it). Excluded NPCs keep their non-OBW body (reload to revert). Default unbound. Same effect as a 'Plugin.esp|0xFormID' line in an OBodyNGWeight_Exclusions file.")
     elseif option == _biasOption
         SetInfoText("Global heavier(+)/leaner(-) dial. Shifts the mock weight before clamping to [0-100], so it nudges body size everywhere: procedural frame size (modes Procedural / Oriented) and the OBody-preset interpolation (OBody Sim Weight mode).")
     elseif option == _seedOption

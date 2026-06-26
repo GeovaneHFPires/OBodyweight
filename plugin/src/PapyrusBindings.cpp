@@ -438,6 +438,29 @@ void MarkMorphsApplied(RE::StaticFunctionTag*, RE::Actor* a_actor) {
     if (a_actor) WeightManager::GetSingleton().MarkMorphsApplied(a_actor->GetFormID());
 }
 
+// OBody's apply method: re-apply our body morphs (key "OBW") to the actor's body AND worn armor via SKEE,
+// DEFERRING the model rebuild to the engine's next update (deferUpdate=true). No armor unequip/re-equip and
+// no synchronous re-skin -> none of the cell-entry stutter / visible morph pop those caused. No-op without
+// SKEE/RaceMenu (g_morph null); the Papyrus UpdateModelWeight path stays as the fallback for that case.
+void ApplyBody(RE::StaticFunctionTag*, RE::Actor* a_actor) {
+    if (a_actor && g_morph) {
+        g_morph->ApplyBodyMorphs(a_actor, true);
+    }
+}
+
+// Exclude / re-include a SPECIFIC NPC by FormID (runtime toggle - for a hotkey or an MCM "exclude this target").
+void SetActorExcluded(RE::StaticFunctionTag*, RE::Actor* a_actor, bool a_on) {
+    Config::SetActorExcluded(a_actor, a_on);
+}
+
+// Per-NPC exclusion hotkey (aim + key). Stored in the INI via Config.
+std::int32_t GetExcludeKey(RE::StaticFunctionTag*) {
+    return Config::g_excludeKey;
+}
+void SetExcludeKey(RE::StaticFunctionTag*, std::int32_t a_key) {
+    Config::SetExcludeKey(a_key);
+}
+
 bool HasMorphsApplied(RE::StaticFunctionTag*, RE::Actor* a_actor) {
     if (!a_actor) return false;
     return WeightManager::GetSingleton().HasMorphsApplied(a_actor->GetFormID());
@@ -469,6 +492,10 @@ bool Register(RE::BSScript::IVirtualMachine* a_vm) {
     a_vm->RegisterFunction("ReprocessAllLoaded",  kScript, ReprocessAllLoaded);
     a_vm->RegisterFunction("SweepFallback",       kScript, SweepFallback);
     a_vm->RegisterFunction("GetNextMorphActor",   kScript, GetNextMorphActor);
+    a_vm->RegisterFunction("ApplyBody",           kScript, ApplyBody);
+    a_vm->RegisterFunction("SetActorExcluded",    kScript, SetActorExcluded);
+    a_vm->RegisterFunction("GetExcludeKey",       kScript, GetExcludeKey);
+    a_vm->RegisterFunction("SetExcludeKey",       kScript, SetExcludeKey);
     a_vm->RegisterFunction("HasMorphsPending",    kScript, HasMorphsPending);
     a_vm->RegisterFunction("GetBodyMode",         kScript, GetBodyMode);
     a_vm->RegisterFunction("SetBodyMode",         kScript, SetBodyMode);
